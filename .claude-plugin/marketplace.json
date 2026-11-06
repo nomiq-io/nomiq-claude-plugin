@@ -1,0 +1,14 @@
+{
+  "name": "nomiq",
+  "description": "Design event-sourced domain models conversationally and generate microservice code via the nomiq platform.",
+  "owner": {
+    "name": "nomiq"
+  },
+  "plugins": [
+    {
+      "name": "nomiq",
+      "source": "./plugins/nomiq",
+      "description": "Design event-sourced domain models conversationally and generate microservice code via the nomiq platform."
+    }
+  ]
+}

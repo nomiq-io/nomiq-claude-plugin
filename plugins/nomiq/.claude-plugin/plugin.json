@@ -1,0 +1,12 @@
+{
+  "name": "nomiq",
+  "displayName": "nomiq",
+  "version": "0.2.0",
+  "description": "Design event-sourced domain models conversationally and generate microservice code via the nomiq platform.",
+  "author": {
+    "name": "nomiq"
+  },
+  "homepage": "https://platform.nomiq.io",
+  "repository": "https://github.com/nomiq-io/nomiq-claude-plugin",
+  "mcpServers": "./.mcp.json"
+}
