@@ -73,7 +73,7 @@ keys pass `GATEWAY_OIDC_MAX_KEY_AGE`.
 | `GATEWAY_OIDC_AUDIENCES` | Both | Required: API audiences, comma-separated |
 | `GATEWAY_OIDC_ACCESS_TOKEN_RULE` | `oauth` | Required: `claim-typ:<value>`, `header-typ:<value>` or `none` |
 | `GATEWAY_OIDC_CLIENTS` | Both | Allowed `azp` values, comma-separated |
-| `GATEWAY_OIDC_JWKS_URI` | `oauth` | JWKS URL, when the provider has no discovery document |
+| `GATEWAY_OIDC_JWKS_URI` | Both | JWKS URL, used instead of discovery |
 | `GATEWAY_JWT_KEY_FILE` | `oauth` | PEM public key, for development or providers with no JWKS |
 
 Keycloak access tokens carry only `aud: account` by default, so add an audience
