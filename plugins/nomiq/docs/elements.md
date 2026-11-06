@@ -2,10 +2,9 @@
 
 Elements are the **backend's internal representation** of a nomiq domain model,
 derived from the `.nomiq` DSL sources by the compiler. The DSL is the only
-source of truth — elements are never authored or stored in a project. This
-reference exists to explain the underlying semantics the DSL compiles to
-(useful when interpreting validator messages that mention element concepts)
-and for migrating legacy `.nomiq/model` JSON stores via `nomiq_dsl_import`.
+source of truth, and elements exist as its compiled form. This reference
+explains the underlying semantics the DSL compiles to, which helps when
+interpreting validator messages that mention element concepts.
 
 Scripts (`condition`, `predicate`, `value`, `rule`, effect expressions) are covered
 in `scripting.md`; which references and functions are legal in each script slot is
@@ -27,9 +26,9 @@ Every element extends the same base:
 
 | Property | Rule |
 |---|---|
-| `id` | 12-character id, derived deterministically by the compiler from the element's metatype and path. Ids never appear in DSL sources and are never authored; renaming an element re-keys it. |
+| `id` | 12-character id, derived deterministically by the compiler from the element's metatype and path. Renaming an element re-keys it. |
 | `pid` | The parent element's id — this forms the model tree. |
-| `metatype` | One of: `domain context aggregate projection process command query entity valuetype term subscription policy enumeration gateway integration push pull` (`event` exists but is never authored — see §7.2). |
+| `metatype` | One of: `domain context aggregate projection process command query entity valuetype term subscription policy enumeration gateway integration push pull` (`event` elements are derived — see §7.2). |
 | `name` | **PascalCase** for all elements (`PlaceOrder`, `OrderId`). Member names inside elements (fields, inputs, errors, invariants) are **camelCase**, and so are enumeration items. |
 | `desc` | Markdown. Convention: `## Purpose` (what it is) and `## Need` (why it exists) sections. |
 
@@ -71,9 +70,9 @@ A field's type is a reference to another element (or a primitive):
 Primitive `elementId`s are the literal strings `#string`, `#integer`, `#float`,
 `#boolean`, `#date`, `#money`.
 
-> **Rule: primitives are never used directly as field types.** Always wrap the
-> primitive in a term that names the concept: an `email` field is typed by an
-> `EmailAddress` term wrapping `#string`, not by `#string` itself. Primitives
+> **Rule: fields are typed by vocabulary elements.** Wrap each primitive in a
+> term that names the concept: an `email` field is typed by an
+> `EmailAddress` term wrapping `#string`. Primitives
 > appear only inside `term.primitive`.
 
 A field:
@@ -224,7 +223,7 @@ folding events (§7.1).
 Same shape as aggregate minus invariants: `fields` describe one row/document of the
 read model, and — like aggregates — the row identity field must be **named exactly
 `id`** (it maps to the document store's `_id`). **Every projection needs at least
-one subscription** — otherwise nothing ever writes to it.
+one subscription** — subscriptions are what write to it.
 
 ### 4.5 `process` — a long-lived, correlation-keyed state machine
 
@@ -253,21 +252,19 @@ one subscription** — otherwise nothing ever writes to it.
   `states ∪ finals`; every transition target must be in it. Both arrays
   preserve declaration order.
 - **Implicit `state` column** — every process row carries a machine-state
-  column named `state`. It is **NOT in `fields`**: users neither declare nor
-  script it (a user field named `state` is an error; `self.state` is
+  column named `state`. The engine owns it, outside `fields` (a user field named `state` is an error; `self.state` is
   reserved). The engine writes it from each transition's `to`.
 - **Derived state enum** — each process derives a root-level `enumeration`
   named `<Process>State` with `id = stateEnumId(process.id)` (case-swap
   involution, beside `mirroredId` = reverse and `rejectionId` = reverse +
-  swap), items = states ∪ finals. Never authored, never printed —
+  swap), items = states ∪ finals. Implicit and
   referencable everywhere (readers fold milestone facts into it).
 
 Children are intent contracts (commands with `"kind": "intent"`, §5) and
 policies — the machine's handlers (§6.3). The order of a process's policy
 children is **semantically load-bearing** (first-match, §6.3). A process is
 the only element that dispatches decisions to peers;
-delivery/replay/deadline/finality semantics are specified in
-`_docs/semantics.md`.
+the runtime owns delivery, replay, deadlines and finality.
 
 ## 5. `command` — the write-side entry point
 
@@ -299,7 +296,7 @@ All of `invariants`, `inputs`, `errors`, `effects` are **required arrays** (use
 `[]`). `event` and `access` are optional. `isManualFlow: true` marks a
 contract-only element whose flow class is hand-written under the project's
 `manual/` tree (DSL: bare `@manual` above the declaration — see
-`docs/manual-flow.md`); `manualFlowCode` is deprecated and ignored.
+`docs/manual-flow.md`).
 
 Granular manual slots are marked per member instead, by `@manual(<method>)` in
 the DSL: `input.isManual` (+ `input.type`, the explicit result type),
@@ -346,19 +343,18 @@ Plain commands may carry `dispatches` too, but only **push-port signals**
   ```
 
   `selection`: `one | many | page | exist | count | seqno`. A `seqno` input's
-  condition is a **literal string prefix**, not an expression, and its optional
+  condition is a **literal string prefix**, and its optional
   `padding` (1..18, default 6) is how many digits the drawn counter is zero-padded
   to — `{"selection": "seqno", "condition": {…"ORD-"}, "padding": 8}` hydrates
-  `ORD-00000042`. The prefix is emitted **verbatim** and is not counted by
+  `ORD-00000042`. The prefix is emitted **verbatim** and sits outside
   `padding`, so it owns its separator: `"ORD"` draws `ORD000042`. `padding` on
   any other selection is an err. On a command, inputs read the **enclosing
   aggregate's own store only** — an optional `sourceId` (a **sourced input**,
   reading another element's read model) is **rejected on commands**: an
   aggregate is a consistency boundary and must decide from its own state plus
-  the command payload, never from an unlocked cross-boundary snapshot. Sourced
-  reads stay available where they are coordination rather than decision —
-  projection subscriptions and process policies — and are advisory snapshots
-  there: never locked, no consistency guarantee; invariants that depend on the
+  the command payload. Sourced reads serve coordination — projection
+  subscriptions and process policies — and are advisory, unlocked snapshots
+  there; invariants that depend on the
   data belong on the aggregate that owns it.
 - `errors` — validations; the command is rejected when `condition` is TRUE:
 
@@ -368,11 +364,9 @@ Plain commands may carry `dispatches` too, but only **push-port signals**
                    "args": [ { "type": "ref", "qname": "currentOrder" } ] } }
   ```
 - `effects` — how the produced event folds into aggregate state (§7.1).
-  In practice **instance ops** (`insert | replace | update | remove | upsert`):
-  the schema now admits `updateMany`/`deleteMany` here too, but validation
-  rejects them with a "generator support is pending" error until the
-  command-flow templates emit multi-row writes. Fold many rows in a projection
-  instead.
+  **Instance ops** (`insert | replace | update | remove | upsert`): validation
+  rejects `updateMany`/`deleteMany` here with a "generator support is pending"
+  error. Fold many rows in a projection.
 - `access` — authorization: `rule` is a boolean script over the `actor`'s fields;
   `injections` overwrite request fields from the actor (each lvalue must be
   `[_/<requestField>]`).
@@ -405,8 +399,8 @@ Each phase sees different data — that is exactly what `slot-contexts.md` encod
 
 - `selection`: `one | many | page | exist | count | seqno`. A `seqno` query takes
   the same literal prefix and optional `padding` as a `seqno` input.
-- `fields` are the query **parameters** (not the result shape — results come from
-  the parent's fields).
+- `fields` are the query **parameters**; results take the shape of the parent's
+  fields.
 - `condition` optional; without it the query filters by matching parameter names
   against the parent's key fields.
 
@@ -430,8 +424,8 @@ Each phase sees different data — that is exactly what `slot-contexts.md` encod
 - `effects` — how the event folds into the projection (§7.1). Projections own
   no invariants, so the many-ops (`updateMany`/`deleteMany`) are legal here.
 
-Subscriptions never communicate: cross-service writes are process dispatches,
-foreign reads are sourced inputs.
+Cross-service writes are process dispatches, and foreign reads are sourced
+inputs.
 
 ### 6.3 `policy` — one handler of a process machine
 
@@ -458,11 +452,11 @@ the compiled form of an `on`/`after` handler inside the process's
   ```json
   { "kind": "init" }                       // creates the instance (keyed insert, no self)
   { "kind": "state", "state": "started" }  // requires an instance in that state (full self)
-  { "kind": "any" }                        // every non-final state; fact triggers only (v1)
+  { "kind": "any" }                        // every non-final state; fact triggers only
   ```
 
-  `init` is a pseudostate: not in the state enum, never a transition target,
-  no deadlines; init handlers take intent triggers only (v1).
+  `init` is a pseudostate outside the state enum: transitions leave it, and its
+  handlers take intent triggers only.
 - `trigger` — a discriminated union:
 
   ```json
@@ -483,7 +477,7 @@ the compiled form of an `on`/`after` handler inside the process's
 - `guard` — optional handler-selection guard: same-trigger variants are
   tried in **declaration order**, first match fires; the unguarded variant
   is the else and must be last. Guards read the trigger + self (state scope
-  only) — never inputs (replay determinism). Facts with no matching handler
+  only), which keeps replay deterministic. Facts with no matching handler
   are ignored; intents are rejected.
 - `inputs` — as on subscriptions (sourced reads allowed); advisory snapshots.
 - `errors` / `invariants` — handler-owned, as on commands: a TRUE error
@@ -500,11 +494,10 @@ the compiled form of an `on`/`after` handler inside the process's
   { "to": "reserved", "data": [ …bindings… ] }
   ```
 
-  `to` must be a declared state or final. Stored structurally, never
-  lowered to an effect: the write is **keyed** by the resolved instance
+  `to` must be a declared state or final. Stored structurally: the write is **keyed** by the resolved instance
   (insert for init handlers — `data` must bind `id`; patch otherwise), so
-  no `where` filter exists anywhere. The implicit `state` column is set by
-  the engine from `to` and is not bindable in `data`.
+  the instance is the target. The engine sets the implicit `state` column from
+  `to`.
 - `dispatches` — decisions sent to other elements (§6.4). Required array.
 
 **First-match order invariant**: a process's policy children array is in
@@ -516,7 +509,7 @@ store must preserve the array order.
 
 Carried by policies (`policy.dispatches` — the process is the sender) and by
 plain commands (`command.dispatches` — **push-port signals only**, the
-service's own outbound adapters). Intents never dispatch — they are
+service's own outbound adapters). Intents are
 contracts (§5).
 
 ```json
@@ -530,14 +523,14 @@ contracts (§5).
 commands, intents, and push ports; a plain command only its own push ports —
 a peer decision needs a process. Unlike transitions, dispatches cross a
 consistency boundary: the runtime delivers them reliably and suppresses them
-when facts are replayed (`_docs/semantics.md` §3).
+when facts are replayed.
 
 ### 6.5 Timers — a command's deferred self-dispatch
 
 Carried by plain commands (`command.timers`). Each arms one durable deferred
 dispatch when the decision commits; on expiry the target — always a command of
-the **same aggregate** — re-enters through the normal intake. Intents have no
-timers (a contract does nothing); process waits are deadlines (§6.3).
+the **same aggregate** — re-enters through the normal intake. Process waits are
+deadlines (§6.3).
 
 ```json
 { "desc": "",
@@ -550,13 +543,12 @@ timers (a contract does nothing); process waits are deadlines (§6.3).
 
 Unlike a deadline's `duration` (a literal `{value, unit}`), `interval` is an
 **expression** in the dispatch scope — request, produced event, hydrated
-inputs; `[_/…]` is an error because the fold has not run yet. That scope is
-exactly why timers are dispatch-family: effects replay and may not read the
-request, and arming must not replay at all.
+inputs; `[_/…]` is an error because the fold runs later. That scope is
+exactly why timers are dispatch-family: effects replay and read event and
+state, and arming runs once.
 
-No firing-time guard and no cancellation exist: a fired timer delivers, and the
-target command's errors judge it, producing a `<Command>Rejected` fact. `key`
-is the handle a future `cancel` would name.
+A fired timer delivers, and the target command's errors judge it, producing a
+`<Command>Rejected` fact.
 
 ## 7. Effects and events
 
@@ -593,8 +585,8 @@ The write ops split by emitter:
 - **Instance ops** (`insert replace update remove upsert`) — what aggregate
   commands actually use: a consistency boundary writes its own instance.
 - **Many-ops** (`updateMany`/`deleteMany`) — projection subscriptions, which
-  legitimately fold many rows from one fact. They are structurally legal on a
-  command too, but validation rejects them there pending generator support.
+  legitimately fold many rows from one fact. On a command, validation rejects
+  them.
 
 Example — insert a projection row from an event:
 
@@ -611,15 +603,14 @@ Example — insert a projection row from an event:
 ```
 
 `insert/replace/upsert` write a whole row; `update/updateMany` patch rows matching
-`where`; `remove` deletes by identity; `deleteMany` by filter. Effects never
-communicate — communication is a **dispatch** (§6.4): decisions to peer
+`where`; `remove` deletes by identity; `deleteMany` by filter. Communication
+is a **dispatch** (§6.4): decisions to peer
 commands/intents may only be sent by processes (policies); push ports (the
 service's own outbound adapters) may be signalled by commands and policies.
 
-### 7.2 Events are derived — never author them
+### 7.2 Events are derived
 
-There is an `event` metatype in the element schema, but clients never write event
-elements. The server derives each command's event at validation/generation time:
+The `event` metatype in the element schema is server-owned. The server derives each command's event at validation/generation time:
 
 - `event.id = mirroredId(command.id)` (the command id, reversed)
 - `event.fields = command.fields ++ command.event.fields`
@@ -629,7 +620,7 @@ A policy's optional milestone derives the same way from the policy's id:
 `mirroredId(policy.id)`. Its fields are `policy.event.fields` — prefixed,
 for **intent handlers**, by the triggering intent's request fields
 (`eventOfPolicy(policy, intentFields)`). A process's derived state enum
-(§4.5) is likewise never authored.
+(§4.5) is likewise derived.
 
 Consequences: an authored `event` element is an error; `subscription.triggerId`
 and policy `trigger.eventId` always equal the reversed id of some command,
@@ -643,13 +634,13 @@ the gateway needs it; a domain without one gets a validator warning.
 
 ## 8. Rarely authored: `gateway`, `integration`, `push`, `pull`
 
-- `gateway` — `{ commands: Command[], queries: Query[] }` inline (not children); an
+- `gateway` — `{ commands: Command[], queries: Query[] }` inline; an
   external API facade.
 - `integration` — a fieldable holding an external system's ports.
 - `push` / `pull` — fieldables with optional `access`; outbound/inbound integration
   endpoints. Their `fields` are request parameters. A `pull` also carries
   `result: { functor: "id" | "list", fields: Field[] }` — the record it reads
-  back, required (an absent one errs) and never shared with the enclosing
+  back, required (an absent one errs) and separate from the enclosing
   integration's record. A `push` has no result: a port signal is
   fire-and-forget. Result fields are a record shape, so they carry no `value`.
 
@@ -678,7 +669,7 @@ Only author these when the user explicitly needs external integrations.
 10. **A process field named `state`** — the machine-state column is implicit
     and reserved; declaring it (or reading `self.state`) is an error.
 11. **Reordering a process's policies** — handler selection is first-match in
-    declaration order; the array order is meaning, not formatting.
+    declaration order; the array order carries meaning.
 12. **Handling on an intent** — `event`/`inputs`/`errors`/`effects`/`dispatches`
     on a `kind: "intent"` command err; an intent is a contract, handling lives
     in the process's init/state handlers.

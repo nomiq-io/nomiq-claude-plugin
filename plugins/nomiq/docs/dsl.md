@@ -21,7 +21,7 @@ elements.
 
 All `.nomiq` files passed to `compile()` form **one compilation unit**. There
 are no imports: root vocabulary is one flat namespace, and references resolve
-globally in a second pass — declaration order and file boundaries never matter,
+globally in a second pass — sources may declare in any order across any files,
 and cyclic references between contexts (event choreography) are fine.
 
 A file starts with at most one header:
@@ -34,8 +34,8 @@ A file starts with at most one header:
   declaration in the file (`aggregate`, `projection`, `process`,
   `integration`). Files
   sharing the same path **merge** into one context. `shop` and
-  `shop.ordering` are unrelated flat contexts — dots are naming convention,
-  not containment.
+  `shop.ordering` are unrelated flat contexts — dots are a naming
+  convention.
 
 **Partial declarations**: a holder re-opened across files of one context
 (same kind and name) merges its members — splitting a large holder across
@@ -60,8 +60,7 @@ one whole-holder file per aggregate/projection/process/integration
 members inside); the default `'compact'` keeps one file per context. When
 two holders in one context share a name, their files are qualified with the
 metatype (`core/Wallet.aggregate.nomiq`, `core/Wallet.projection.nomiq`) so
-neither
-overwrites the other — file names are only a printer convention; compile
+each keeps its own file — file names are only a printer convention; compile
 ignores them.
 
 An `integration` (root-level or inside a context) may nest `push` and `pull`
@@ -84,16 +83,16 @@ integration LockerBridge {
 
 A port's own `field`s are its request parameters. A `pull` additionally states
 the record it reads back in a mandatory `result { … }` block — `result list
-{ … }` when it reads back many. The answer belongs to the port, not to the
-integration: one external system's resources have unrelated shapes.
+{ … }` when it reads back many. The answer belongs to the port, because
+one external system's resources have unrelated shapes.
 
 `push` ports are valid `dispatch` targets alongside commands and intents
 (`dispatch core.LockerBridge.OpenBox { … }` — §6). Because a port is the
 service's own outbound adapter (no consistency boundary behind it), a plain
 aggregate command may also carry `dispatch <port> { … }` clauses — the
-declarative form of "this decision signals the device". Peer commands remain
-process-only targets; `pull` ports are reads and never dispatch targets, and a
-`push` never declares a `result` — it signals and reads nothing back.
+declarative form of "this decision signals the device". Peer commands are
+process-only targets; `pull` ports serve reads, and a `push` is a one-way signal
+with no `result`.
 
 ```nomiq
 // shop.nomiq                      // ordering.nomiq
@@ -110,8 +109,7 @@ term OrderId: string               aggregate Order { … }
   is incomplete: inside `( … )`, after a trailing operator / `,` / `=` / `:` /
   word like `when if where from on set and or` or a selection keyword, or
   before a leading `when / then / else / from / and / or / {` or binary
-  operator. (`set` and the selection keywords never continue a line from the
-  left — they start clause lines inside blocks.)
+  operator. (`set` and the selection keywords start clause lines inside blocks.)
 - **Annotations**: `@manual` / `@manual(<method>)` on its own line marks the
   following declaration as hand-written (§10). `@manual` is the only
   annotation; any other `@name` is a compile error.
@@ -119,7 +117,7 @@ term OrderId: string               aggregate Order { … }
   the following declaration/member as its `desc` (markdown preserved, so the
   `## Purpose` / `## Need` convention is written directly). A `///` run sits
   **directly above** what it documents — the blank line that sets it off goes
-  above the comment, never between the comment and its member.
+  above the comment.
 - **Formatting** — what `nomiq-fmt` emits (§11), so write it this way by hand
   and the formatter will leave it alone. Two-space indent, wrapped at 100
   columns, and **one blank line**:
@@ -130,8 +128,8 @@ term OrderId: string               aggregate Order { … }
 
   Consecutive plain one-liners of the same kind stay packed (two `field` lines,
   two `error` lines). **Clause** lines inside an effect / input / access /
-  dispatch body (`when`, `original`, `oneOf`, `set`, `rule`, `inject`) are not
-  members and stay packed. Never a blank line straight after `{` or before `}`.
+  dispatch body (`when`, `original`, `oneOf`, `set`, `rule`, `inject`) stay
+  packed. `{` and `}` sit directly against their content.
 - **Literals**: `"text"` (or `'text'`), `42`, `3.14`, `true`, `false`, `null`.
   Bare ISO dates (`2026-12-31`) are legal **only** in term constraints — the
   script AST has no date or money literal.
@@ -201,7 +199,7 @@ aggregate Order {
     // seqno takes a prefix string instead: input no { seqno "ORD-" }
     // the prefix is emitted verbatim — it owns its separator, if any
     // an optional width follows it — 'seqno "ORD-" 8' draws ORD-00000042; the
-    // width sizes the counter alone (not the prefix), and defaults to 6
+    // width sizes the counter alone, and defaults to 6
     // a command's inputs read THIS aggregate's own store only — a 'from' clause
     // (a sourced input) is rejected here, because an aggregate must decide from
     // its own state and the command. Sourced reads belong on projection
@@ -238,25 +236,23 @@ exist), `numberOf` (a count), plus `seqno "PFX" [<digits>]` (a sequence draw).
 A query's selection clause is required — it types the result — and its
 predicate is optional (`allOf` alone reads everything).
 
-`seqno` is the odd one: it takes a **literal** prefix, not a predicate, and
+`seqno` is the odd one: it takes a **literal** prefix and
 draws the next counter under it as a string. The prefix is emitted **verbatim**
 — it is the whole prefix, separator included: `seqno "ORD-"` yields `ORD-000042`
 and `seqno "ORD"` yields `ORD000042`.
 The optional trailing number is the counter's **width in digits** (1..18,
-default 6): `seqno "ORD-" 8` yields `ORD-00000042`. It pads the counter alone —
-the prefix is not counted, so the width survives a change of prefix — and it is
-a minimum, not a cap: once the counter outgrows the width it prints in full, and
+default 6): `seqno "ORD-" 8` yields `ORD-00000042`. It pads the counter alone,
+so the width survives a change of prefix, and it is a minimum: once the counter outgrows the width it prints in full, and
 the series stops sorting lexicographically. Size it for the volume you expect.
 
 The prefix is also the counter's **identity** — it keys the stored counter
-document. Changing it starts a **new counter at 1**, so adding a separator to a
-prefix already in production is not a rename: `"ORD"` and `"ORD-"` are two
+document. Changing it starts a **new counter at 1**: `"ORD"` and `"ORD-"` are two
 independent series.
 
 Effects use a **subset**: only `oneOf` and `allOf` select rows to write (plus
 `identity` for a single-row delete). `pageOf`/`existOf`/`numberOf`/`seqno` read,
-so they have no meaning in a write, and an effect selection always needs a
-predicate — unlike a query's, it may not stand alone.
+so they have no meaning in a write, and an effect selection always carries a
+predicate.
 
 Inputs and queries put **one clause per line**: their bodies end each clause at
 the newline, so `input row { from X  oneOf … }` is a parse error. Effect and
@@ -301,19 +297,15 @@ effect delete {
 
 - `when` gates whether the effect runs at all; `oneOf`/`allOf` select the
   rows it touches; `identity` names the single row a delete removes.
-  `delete { oneOf … }` is reserved — the backend has no selection-based
-  single delete yet; use `identity`.
-- Many-ops (`allOf`) are grammatical in aggregate commands too — the
-  historical "an aggregate instance writes only itself" restriction is
-  lifted at the DSL level; platform validation still flags them until the
-  command-flow generators support multi-row writes. Projections fold
-  freely. Process handlers never use `effect` at all — their folds are
-  `transition`s (§6).
+  Use `identity` for a single delete; `delete { oneOf … }` is reserved.
+- Many-ops (`allOf`) parse in aggregate commands, and platform validation
+  flags them there: command flows write single rows. Projections fold
+  freely. Process handlers fold through `transition`s (§6).
 - The guard comes first. A `when` written on its own line *after* the `set`
   lines would otherwise be swallowed as that last binding's condition — two
   different meanings that look identical — so the parser rejects it and asks
   you to move it up. A per-binding guard goes on the same line as its `set`.
-- `delete` takes no `set` clauses: it removes rows, it does not write them.
+- `delete` removes rows, so it has no `set` clauses.
 - Bindings: `set field = <expr>` — plus `set field = { nested }` for
   composite fields (nested bindings are bare `field = <expr>`),
   `set field = null` for explicit clears, `set field = expr when cond` for
@@ -349,12 +341,12 @@ command PlaceHold {
 
 - Units are **words**: `seconds | minutes | hours | days`. The `15m` suffix
   form belongs to the process deadline (§6), whose duration is a literal; a
-  timer's interval is an **expression**, so the unit cannot ride on it.
+  timer's interval is an **expression**, so the unit stands apart from it.
 - The interval, `key`, and `when` read the request (`request.…`), the produced
   event (`event.…`), and hydrated inputs — the dispatch scope. `self.…` is an
   error: the fold has not run when the timer is armed.
-- **This is why a timer is a `dispatch` and not an `effect`.** Effects re-run
-  on replay and may not read the request; arming does neither. Writing
+- **This is why a timer is a `dispatch`.** Effects re-run on replay and read
+  event and state; arming runs once and reads the request. Writing
   `effect schedule` is a parse error that says so.
 - The body takes exactly `when`, `key`, and one `dispatch`. No `effect` (folds
   stay in the command's effects), no `transition` or `event` (those are process
@@ -390,12 +382,11 @@ actor {
 - `claim` takes a string, read exactly as written; dots address nested claims.
 - Fields are required unless marked `optional`. A missing required claim, or a
   claim of the wrong type, rejects the token.
-- `id` is mandatory. It is the provider's subject, not an application id:
-  bind it to one explicitly, as in `inject customerId = actor.id`.
+- `id` is mandatory. It is the provider's subject: bind it to an
+  application id explicitly, as in `inject customerId = actor.id`.
 - Field types are `string`, `integer`, `float` or `boolean`, terms over them,
   or lists of those.
-- Rules read declared fields only, one segment deep: `actor.roles`, never
-  `actor.realm_access.roles`.
+- Rules read declared fields only, one segment deep, as in `actor.roles`.
 - A comparison on an absent optional is false for both `==` and `!=`, so rules
   fail closed; test for absence with `actor.phone == null`. Injecting an absent
   optional writes null over the request field.
@@ -442,7 +433,7 @@ Every command and intent also implicitly defines a **rejection fact** named
 needed. A refused decision appends it to the same correlation chain, carrying
 the refused request's fields, so failure handling is ordinary reaction logic:
 `on core.Reservation.CreateRejected { transition failed }` in a process
-state (see `_docs/semantics.md` guarantee 5).
+state.
 
 Subscriptions are **anonymous**: `on <event> { … }` is the whole header.
 The element name derives from the resolved trigger — `On` + the event name,
@@ -453,18 +444,17 @@ projection are an error: merge the blocks.
 
 A subscription's body is `input`s and `effect`s. An input with a `from
 <ctx.Element>` clause is a **sourced input**: an advisory snapshot read of another
-element's read model (aggregate, projection, or process) — never locked, no
-consistency guarantee; an invariant that depends on the data belongs on the
-aggregate that owns it (`_docs/semantics.md` §4). Without `from`, an input
-reads the enclosing element's own store, as before. Subscriptions never
-communicate — cross-service writes are process dispatches (§6).
+element's read model (aggregate, projection, or process). The snapshot is
+unlocked and may be stale, so an invariant that depends on the data belongs on
+the aggregate that owns it. Without `from`, an input reads the enclosing
+element's own store. Cross-service writes are process dispatches (§6).
 
 ## 6. Processes — state machines, intents, dispatch
 
 A `process` is the third context holder beside `aggregate` and `projection`:
 a long-lived, correlation-keyed **state machine**. Like an aggregate it owns
-per-instance state — its fields, with a mandatory `field id: <Term>`; unlike
-an aggregate its triggers can also be observed facts, and it is the **only**
+per-instance state — its fields, with a mandatory `field id: <Term>`; its
+triggers can also be observed facts, and it is the **only**
 element that dispatches decisions to peers (any command may signal its own
 integration push ports — §3). Members: `field`, `invariant`, `intent`,
 `init { … }`, `state <name> { … }`, `final a b c`, and top-level `on`
@@ -537,27 +527,26 @@ process BoxBooking {
   subscriptions — `After15M`). Body: an optional `event <Name> { … }` (the
   handler's **milestone** fact), `input`s, `error`s (runtime effect on
   intent handlers only — a fact cannot be refused), `invariant`s, at most
-  one `transition`, `dispatch`es. `effect` is gone: folds are transitions.
+  one `transition`, `dispatch`es. Folds are transitions.
   An intent handler's milestone automatically carries the intent's request
-  fields — the braces declare only *extra* computed fields (never redeclare
-  a request field; usually the milestone is bodiless: `event BookingStarted`).
+  fields — the braces declare only *extra* computed fields (usually
+  the milestone is bodiless: `event BookingStarted`).
   Fact/deadline milestones carry declared fields only.
 - **`transition <state> [{ field = expr … }]`** — enter a state and assign
   fields; targets must be declared states or finals. The fold is keyed by
-  correlation — never a `where` script — and is a function of the entry
+  correlation and is a function of the entry
   state and the fact: `init` transitions insert (and **must bind `id`**);
   state transitions patch, and their rvalues may read `self.…` (counters).
   Init handlers have no `self` scope at all.
 - **`dispatch <ctx.Element.Command> [{ when <expr>  set <field> = <expr> … }]`**
   — sends a decision (a command, an intent, or an integration `push` port);
   `when` gates the send, `set` clauses bind the target's request fields
-  (same clause vocabulary as effects). Communication, not effects: reliably
+  (same clause vocabulary as effects). Dispatches are communication: reliably
   delivered, suppressed on replay.
 
-Semantics (delivery, ordering, and deadline details live in
-`_docs/semantics.md` — the DSL never mentions transport):
+Semantics:
 
-- `init` is not a state: its handlers react to **intents only**, create the
+- `init` is a pseudostate: its handlers react to **intents only**, create the
   instance, and must transition. Handling one intent in `init` **and** in a
   state is start-or-continue — the engine routes on instance existence.
 - An intent nobody handles (no instance and no init handler, or the current
@@ -567,7 +556,7 @@ Semantics (delivery, ordering, and deadline details live in
   any-state `on` handlers; guarded variants of one trigger try first-match
   in declaration order, the unguarded variant is the else and must be last.
   Unmatched facts are ignored. Selection guards read the trigger
-  (event/request) and `self` — never sourced inputs.
+  (event/request) and `self` only.
 - `final` states are bodiless and **absorbing**: entering one disarms the
   instance's deadlines and ends its correlation.
 - `after` is a durable deadline armed by the **milestone events of every
@@ -576,7 +565,7 @@ Semantics (delivery, ordering, and deadline details live in
   re-arms; re-arm supersedes the prior timer. Firing re-checks the instance
   is still in the state.
 - `process XXX` derives a root-level enum **`XXXState`** (items = states ∪
-  finals, declaration order). It is never printed but referencable
+  finals, declaration order). It is implicit and referencable
   everywhere (`BoxBookingState::reserved`); a user root declaration named
   `XXXState` is a collision error.
 - The machine state is an implicit `state` column: a user field named
@@ -638,15 +627,15 @@ Function calls use camelCase, mapped to the kebab-case catalogue:
 
 `new` stays on the record form (`new T { … }`), the copy form (`new T from
 … { … }`), and `new list<T>`. The value-call form drops it — the PascalCase
-casing is the marker — though `new Price(x)` still parses; the printer
+casing is the marker — though `new Price(x)` also parses; the printer
 canonicalizes it to `Price(x)`. A value constructor needs at least one
 argument: `Price()` is an error.
 
 Constructor bindings target fields of the **constructed** type — `self.` is
 structurally impossible inside `new { … }`, preventing the classic
 `set([_/street], …)` mistake. `set`/`new`/`copy-from`/`find-and-update`/
-`mk-list-of` cannot be called directly; the error message points at the
-surface form.
+`mk-list-of` are written in their surface forms; the error for a direct call
+points at the right one.
 
 ## 8. Identity — deterministic ids
 
@@ -658,7 +647,7 @@ surface form.
   (`policy:core/BoxBooking/started/OnReservationCreated`); guarded variants
   of one trigger append a `#k` ordinal in declaration order
   (`…/OnAGone#2`). The domain name is excluded from paths (renaming the
-  domain re-keys nothing).
+  domain keeps every id).
 - Event ids are `mirroredId(commandId)` (string reversal), matching
   `core-model`; a handler's milestone event id is `mirroredId(policyId)`;
   `subscription.triggerId` and handler triggers are computed the same way.
@@ -667,24 +656,22 @@ surface form.
 - Same source ⇒ byte-identical elements — compilation is reproducible, so
   every consumer derives the same elements without a lockfile.
 - **Renames are re-keys** (a rename is delete + create). Collisions (hash or
-  reserved ids) are compile errors, never silently perturbed.
-- **The DSL is the only source of truth.** Element ids never appear in
-  source — they are derived data, recomputed on every compile. Importing a
-  pre-DSL model (random nanoids) re-keys every element to its deterministic
-  id; that is by design, since nothing outside the generated AST depends on
-  the ids (generated code is a function of names and structure).
+  reserved ids) are compile errors.
+- **The DSL is the only source of truth.** Element ids are derived
+  data, recomputed on every compile, and generated code is a function of names
+  and structure.
 
 ## 9. Structural rules (matching `plugin-nomiq` store checks)
 
-- Exactly one `domain` per unit; events are **never authored** (only the
-  `event` block inside a command or process handler); aggregates,
+- Exactly one `domain` per unit; events are **derived** from the
+  `event` block inside a command or process handler; aggregates,
   projections, and processes must declare a field named exactly `id`;
   unknown types, contexts, and targets are compile errors with file:line
   diagnostics.
 
 ## 10. Manual coding
 
-Behavior the DSL cannot express is handed off to hand-written flow code with
+Behavior beyond the DSL is handed off to hand-written flow code with
 the **`@manual` annotation** — one shape for every granularity (full
 workflow: `docs/manual-flow.md`). The annotation sits on its own line
 directly above the declaration it marks (doc comment first, then the
@@ -737,7 +724,7 @@ annotation, then the declaration).
   the names must be distinct across inputs, errors, event fields and effects,
   and must avoid the generated members (`hydrate`, `handle`, `apply`,
   `dispatches`, `state`; subscriptions have no `handle`/`dispatches`).
-  Validation rejects a collision — the Java would not compile.
+  Validation rejects a collision.
 
   Prefer a granular slot over whole-manual whenever only one
   value/condition/read is inexpressible — the public contract and all other
@@ -746,27 +733,22 @@ annotation, then the declaration).
 Hand-written classes live in the project's `manual/` tree
 (`manual/<context>/<Holder>/<Element>Flow.java`); `/nomiq:generate` overlays
 them into `src/` and guards against drift.
-`@manual` is the only annotation — any other `@name` is a compile error (the
-syntactic category is open for future markers). An element named `manual`
-still parses via backticks.
+`@manual` is the only annotation — any other `@name` is a compile error. An element named `manual`
+parses via backticks.
 
-Reserved (not implemented yet): manual query predicates; manual process
-handlers (`@manual` on `on <Intent>` / `after <duration>` — intents
-themselves are never manual, they are already pure contracts); transition
-fold-value slots. Legacy `manualFlowCode` is deprecated: the printer warns
-and drops it.
+`@manual` covers the slots above. Query predicates, process handlers and
+transition fold values are written in the DSL, and intents are pure contracts.
 
-## 10a. Out of scope / open questions
+## 10a. Current limits
 
 - **`original`** on insert/replace/upsert: the `original <ref>` clause is
-  provisional pending platform semantics.
-- **`delete { oneOf … }`**: reserved until the backend supports a
-  selection-based single delete.
-- **Many-ops in commands**: accepted by the compiler; platform validation
-  flags them until the command-flow generators handle multi-row writes.
-- **List literals** for `in`: deferred until the AST supports them.
-- **Bare primitive field types** (`#string` without a term): printable with a
-  warning, but not compilable — introduce a term.
+  provisional.
+- **Single delete**: use `identity`; `delete { oneOf … }` is reserved.
+- **Many-ops in commands**: accepted by the compiler and flagged by platform
+  validation.
+- **`in`**: list literals are outside the grammar.
+- **Field types**: introduce a term; a bare primitive such as `#string` prints
+  with a warning and fails to compile.
 
 ## 11. Tooling
 
@@ -776,18 +758,16 @@ and drops it.
   nomiq-fmt [dir] [--layout auto|compact|split] [--check] [--force]
   ```
 
-  `dir` defaults to `dsl/` when present, falling back to `.nomiq/src` for
-  older projects. fmt = print ∘ compile, so it
-  is byte-idempotent, applies the blank-line house style of §2 (a source's own
+  `dir` defaults to `dsl/` when present, else the current directory.
+  fmt = print ∘ compile, so it is byte-idempotent, applies the blank-line house style of §2 (a source's own
   blank lines are discarded and re-derived), and **canonicalizes the file
   layout** (files may be
   renamed, merged, or split; `auto` keeps whichever layout the existing file
-  names match best, falling back to `compact`). Regular `//` and block
-  comments do not survive the element round-trip — only `///` doc comments
-  do, as `desc` — so fmt refuses to rewrite files that would lose comments
-  unless `--force` is passed. `--check` writes nothing and exits non-zero
-  when formatting would change anything (CI mode). Sources that do not
-  compile cleanly are never rewritten. The same logic is available as
+  names match best, falling back to `compact`). Only `///` doc comments
+  survive the element round-trip, as `desc`, so fmt refuses to rewrite files
+  that would lose `//` or block comments unless `--force` is passed. `--check`
+  is read-only and exits non-zero when formatting would change anything (CI
+  mode). fmt rewrites only sources that compile cleanly. The same logic is available as
   `fmt(sources, options)` from the package.
 
 - **VS Code highlighting** — `editors/vscode-nomiq/` at the repo root: a

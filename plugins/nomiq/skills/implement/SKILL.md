@@ -8,8 +8,7 @@ description: Add behavior (scripts) to a nomiq domain model — command inputs, 
 You are filling in the behavioral scripts of an approved high-level design. You
 edit the `.nomiq` DSL files in the DSL directory (settings `dsl` in
 `.nomiq/settings.json`, default `dsl/`) and iterate against the platform
-validator until clean. (Legacy JSON-store projects must migrate first via
-`nomiq_dsl_import` — see the design skill.)
+validator until clean.
 
 ## Before anything
 
@@ -92,11 +91,11 @@ and an optional width (`seqno "ORD-" 4`) in place of a predicate and answers
 with the drawn counter string; see `docs/dsl.md` §4 for how the width and the
 prefix divide. For processes: intents stay contracts
 (fields +
-`correlate by request.<field>` + access) — never put behavior on them.
+`correlate by request.<field>` + access).
 Implementing a process = writing its `init` and `state` handlers, each in
 this order: inputs → errors → the optional milestone `event` (bodiless
 unless you need extra *computed* fields — an intent handler's milestone
-carries the intent's request fields automatically; never redeclare them) →
+carries the intent's request fields automatically) →
 `transition <state> { … }` (the process fold — bare `field = expr`
 assignments over event/request fields; processes have no effects) →
 `dispatch <ctx.Element.Command> { when <expr>  set <field> = <expr> … }`
@@ -110,10 +109,9 @@ An aggregate command may schedule **one of its own commands** with
 — units are words (`seconds|minutes|hours|days`) because the interval is an
 expression over the request / produced event / hydrated inputs (`self.…` is an
 error: the fold has not run). Add `key` when re-arming should supersede the
-pending clock. There is no firing-time guard and no cancel: if staleness must
-be handled rather than refused by the target's own errors, model a process.
-Writing `effect schedule` is a parse error — arming is communication, not a
-fold.
+pending clock. A fired timer delivers, and the target's own errors judge
+it; when staleness needs more handling than that, model a process.
+Writing `effect schedule` is a parse error — arming is communication.
 
 ## The validate-fix loop (bounded)
 

@@ -3,16 +3,17 @@
 Behavior inside nomiq elements — input conditions, error conditions, invariant
 predicates, event field values, effects, query conditions, access rules — is
 expressed as **Scripts**. This document defines the Script language itself: the
-stored JSON form, the infix shorthand used to read and discuss scripts, the
+compiled JSON form, the infix shorthand used to read and discuss scripts, the
 reference (qname) grammar, the function catalogues, and the special forms.
 
 Which references and functions are legal **in each slot** is in
 `slot-contexts.md`. Element shapes (where scripts live) are in `elements.md`.
 
-## 1. Script AST JSON — the stored form
+## 1. Script AST JSON — the compiled form
 
-In element files, scripts are stored as **AST JSON**, never as infix text. You
-author the AST directly. A Script is a discriminated union on `type` with
+Scripts are written in the `.nomiq` DSL (`dsl.md`). The compiler turns them into
+the **AST JSON** described here, which is the form validator messages refer to.
+A Script is a discriminated union on `type` with
 exactly three node kinds:
 
 ### 1.1 `fun` — a function call
@@ -83,13 +84,9 @@ prose and comments; **the JSON AST is what goes in element files**.
 | `+` (prefix) | `pls` | unary | — **avoid: not in any catalogue** |
 | `-` (prefix) | `mns` | unary | — **avoid: not in any catalogue; write `0 - x`** |
 
-> **None of the `avoid` rows above exist in the `.nomiq` DSL.** The DSL parser
-> deliberately omits `%`, unary `+`, and unary `-` (see the precedence comment in
-> `core-dsl/src/expr.ts`), and it reads `=` as assignment and does not lex `<>`
-> at all — so writing any of them is a compile error, not a warning. They survive
-> only in the AST-level forms this document describes, where the resulting
-> `mod`/`pls`/`mns` functions are still rejected by every code generator. Never
-> author them.
+> **The `.nomiq` DSL accepts the rows above without an `avoid` mark.** Each
+> `avoid` row is a compile error in the DSL, where `=` is assignment, and every
+> code generator rejects `mod`, `pls` and `mns`. Write `0 - x` to negate.
 
 ### Side-by-side example
 
@@ -138,7 +135,7 @@ Paths descend through valuetype/entity fields: `_/address/city`,
 
 - Field name matching is **camel-insensitive** (`orderId` ≡ `OrderId`).
 - Descent through a **list** field stops checking (codegen chains getters into
-  list elements); further segments are not validated.
+  list elements); further segments pass unchecked.
 - Descending into a **primitive** or **enumeration** field is an error
   (`Field [x] is a primitive and has no field [y]`).
 
@@ -164,7 +161,7 @@ this order:
 
 Per-slot forbidden prefixes (see `slot-contexts.md`) are checked **before**
 resolution: a structurally-present but forbidden scope yields the slot's
-specific message, not a generic resolution error.
+specific message.
 
 ## 4. Function catalogue
 
@@ -228,20 +225,19 @@ Notes:
   in the DOMAIN catalogue (legal in event field values) but violate effect
   purity — never use them in effects; compute into an event field instead.
 - Arities marked here for `contains`/`match`/`in`/`map-not-null`/
-  `filter-all-of`/`now`/`unique-id`/`random-id` follow the generators; the
-  shape checker does not enforce them. All other arities are enforced (an
+  `filter-all-of`/`now`/`unique-id`/`random-id` follow the generators and sit
+  outside the shape checker. All other arities are enforced (an
   arity violation is an error).
 - **Filter directionality convention** (not validator-checked, but required by
   the filter compilers): in INPUT/QUERY/EFFECT-FILTER comparisons the **first
   argument must be the field being filtered** (`[_/…]` or a field of the
-  filtered store), the second the compared value: `eq([_/id], [!/id])`, never
-  `eq([!/id], [_/id])`.
+  filtered store), the second the compared value: `eq([_/id], [!/id])`.
 
 ## 5. Special forms
 
 These are DOMAIN functions with positional, non-uniform argument semantics.
 The shape checker requires their first argument to be a `ref` (a type or field
-name), not a literal or nested call.
+name).
 
 ### 5.1 `new([Type], value | set(…)…)` — construct a value
 
@@ -292,11 +288,9 @@ Infix: `copy-from([Address], [^/address], set([city], "Berlin"))`
 ### 5.3 `set([field], value)` — field assignment inside a constructor
 
 Exactly 2 args; `args[0]` is a Ref naming a field **of the CONSTRUCTED type**
-(`new`/`copy-from`'s type, or `find-and-update`'s list element type) — **not**
-a field of the slot's scope. `set([street], …)` inside `new([Address], …)`
-targets `Address.street`; writing `set([_/street], …)` is wrong (the validator
-only checks the last segment, but do not rely on that). `set` never appears
-outside `new`, `copy-from`, or `find-and-update`.
+(`new`/`copy-from`'s type, or `find-and-update`'s list element type).
+`set([street], …)` inside `new([Address], …)` targets `Address.street`. `set`
+appears only inside `new`, `copy-from`, or `find-and-update`.
 
 ### 5.4 `find-and-update([listField], condition, set([field], value))` — update a list element
 

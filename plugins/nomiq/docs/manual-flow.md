@@ -12,7 +12,7 @@ element (the flow class name is derived, so an argument is an error), and
 method** and is required.
 
 **The principle: contracts stay in the DSL, decisions may leave.** Fields,
-event shapes, error names, access rules are never manual (other services
+event shapes, error names and access rules live in the DSL (other services
 verify against them); values, conditions, reads, and effect bodies each get an
 escape sized exactly to them.
 
@@ -26,7 +26,7 @@ Only the marked slot is hand-written. The generator emits an **abstract
 <Name>FlowBase` and override the gaps. The DSL doc comment above each slot
 becomes the abstract method's javadoc — write it as the implementation spec.
 
-The annotation argument — not the slot's own name — is the method name.
+The annotation argument is the method name.
 
 | DSL | Abstract method in the base |
 |---|---|
@@ -75,7 +75,7 @@ package — the engine instantiates it by convention.
 ## Where the code lives
 
 Hand-written sources go in the project's `manual/` tree (settings `manual`,
-default `manual/`), shaped by **domain coordinates**, not Java packages:
+default `manual/`), shaped by **domain coordinates**:
 
 ```
 manual/<context>/<Holder>/<Element>Flow.java     (helper classes alongside)
@@ -116,8 +116,8 @@ in the `.generated` ledger (they are overwritten on every generate — the
 
 Guards on generate:
 
-- `manual-conflict` — generation now produces a path the overlay maps: the
-  element is no longer manual; delete the manual file or restore the `@manual`
+- `manual-conflict` — generation produces a path the overlay maps, because the
+  element lacks `@manual`; delete the manual file or restore the `@manual`
   annotation.
 - `manual-divergence` — the derived `src/` copy was edited in place: port the
   edits back to `manual/` (see sync-back) or revert them.
@@ -126,7 +126,7 @@ Guards on generate:
 
 The copy under `src/` is the one with full IDE support. If a human edits it
 there, `nomiq_manual_sync` adopts the changes back into `manual/` — only for
-files mapped to an element currently marked manual, and only after showing the
+files mapped to an element marked manual, and only after showing the
 user the diff and getting explicit approval. Never call it automatically.
 
 ## Rules of thumb

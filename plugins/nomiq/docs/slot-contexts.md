@@ -8,7 +8,7 @@ element shapes are in `elements.md` (§5 command phases, §7.1 effects).
 Catalogue names below refer to `scripting.md` §4: **DOMAIN**, **INPUT**,
 **QUERY**, **EFFECT-FILTER**, **ACCESS**.
 
-> **Slot names here are the stored AST's, not the DSL's.** `where`, `identity`
+> **Slot names here are the compiled AST's.** `where`, `identity`
 > and `condition` name the slots a script lands in; the DSL surface that fills
 > them is the selection clause
 > (`oneOf`/`allOf`/`pageOf`/`existOf`/`numberOf`/`seqno`), `identity <expr>`,
@@ -68,13 +68,12 @@ EFFECT`. Each slot sees only what exists at its phase.
 | Forbidden (err) | `?/…` — "query parameters are not available in command input conditions"; `^/…` — "the event does not exist yet"; `@/…` — "principal is only available in access rules" |
 
 **Special rule — `seqno`:** an input with `"selection": "seqno"` takes a
-**literal string** sequence prefix as its condition, not an expression:
+**literal string** sequence prefix as its condition:
 `"condition": { "type": "lit", "base": "string", "value": "VAC-" }`. Anything
 else is an err ("takes a literal sequence name, not an expression"). The prefix
 is emitted verbatim and owns its separator — `"VAC-"` draws `VAC-000042`,
 `"VAC"` draws `VAC000042`. It may also carry `"padding": <1..18>` — the digits
-the drawn counter is zero-padded to (default 6), sizing the counter alone and
-not the prefix. `padding` on any other selection is an err.
+the drawn counter is zero-padded to (default 6), sizing the counter alone. `padding` on any other selection is an err.
 
 ### 1.2 `errors[i].condition` — validations (command rejected when TRUE)
 
@@ -96,9 +95,8 @@ test `[inputName/field]` or `is-not-null([inputName])`.
 | `_/…` | the **command's own request fields** (for a command invariant) |
 | Forbidden (wrn) | `!/…`, `^/…`, `?/…`, `@/…` — "Invariants are structural predicates over the element's own fields; […] is outside that scope." |
 
-Unknown fields under `_/…` are still **err** even though the slot is
-uncompiled. Command invariants are structural rules over the request payload,
-not aggregate state.
+Unknown fields under `_/…` are **err**, in this uncompiled slot too. Command
+invariants are structural rules over the request payload.
 
 ### 1.4 `event.fields[i].value` — event field mappings
 
@@ -130,10 +128,9 @@ Which catalogue applies depends on the position:
 | `update`/`updateMany`/`deleteMany`: `where` | EFFECT-FILTER (predicates only) |
 | `remove`: `identity` | DOMAIN |
 
-(`updateMany`/`deleteMany` are what projection subscriptions use; they are
-structurally legal on a command too, but validation rejects them there pending
-generator support, so command effects remain instance ops in practice. Policies
-carry no effects at all — a process's fold is the structural transition, §3.8.)
+(`updateMany`/`deleteMany` are what projection subscriptions use; validation
+rejects them on a command, so command effects are instance ops. A process's
+fold is the structural transition, §3.8.)
 
 Lvalue rules:
 
@@ -146,27 +143,24 @@ Lvalue rules:
 ### 1.7 `dispatches[i]` — outbound bindings (commands, policies)
 
 Dispatches exist on **commands** (`command.dispatches`) and **policies**
-(§3.9) — never on projection subscriptions, and never on intents (an intent
-is a contract; its handlers dispatch). The target kind is contract-checked:
+(§3.9); an intent is a contract, and its handlers dispatch. The target kind is contract-checked:
 a policy may target a **command, intent, or push port**; a plain command may
 target **push ports only** (its own integration adapters — a peer decision
-needs a process). `pull` ports are reads and never dispatch targets;
-dangling targets → err.
+needs a process). `pull` ports are reads; dangling targets → err.
 
 | | |
 |---|---|
 | Catalogue | **DOMAIN** for `data` rvalues and `condition` |
 | `data` rvalues | compute over the request (`!/…`), the **produced event's fields** (`^/…`), and **hydrated inputs** by name; `_/…` err (the instance may not exist yet) |
-| `data` lvalues | the **TARGET's request fields** (single segment), not this element's |
+| `data` lvalues | the **TARGET's request fields** (single segment) |
 
-Dispatches are communication, not effects: reliably delivered, suppressed on
-replay (`_docs/semantics.md` §3) — which is why they are a separate array,
-not an effect variant.
+Dispatches are communication: reliably delivered and suppressed on replay,
+which is why they are a separate array.
 
 ### 1.7a `timers[i]` — deferred self-dispatch (commands)
 
-Timers exist on **plain commands** (`command.timers`) — never on intents,
-subscriptions, or policies (a process waits with a deadline, §3.9). The target
+Timers exist on **plain commands** (`command.timers`); a process waits with a
+deadline (§3.9). The target
 must be a command of the **same aggregate**: peers, intents, and ports all err.
 
 | | |
@@ -174,11 +168,11 @@ must be a command of the **same aggregate**: peers, intents, and ports all err.
 | Catalogue | **DOMAIN** for `interval`, `key`, `condition`, and the nested dispatch |
 | `interval` | integer-valued; same scope as dispatch data — `!/…`, `^/…`, hydrated inputs; `_/…` **err** (the fold has not run when the timer is armed) |
 | `key` | string-valued, same scope; the timer's durable identity — re-arming supersedes |
-| `condition` | gates **arming**, evaluated at decision time — not a firing-time guard |
+| `condition` | gates **arming**, evaluated at decision time |
 | `timers[i].dispatch` | an ordinary dispatch node (§1.7), self-targeted |
 
 The scope is the tell: an interval that reads `!/…` is legal here and banned
-in every effect, because effects re-run at replay time and timers never do.
+in every effect, because effects re-run at replay time and timers run once.
 
 ### 1.6 `access.rule` + `access.injections` — authorization
 
@@ -193,7 +187,7 @@ Injections overwrite request fields from the actor. Each injection:
 
 - `lvalue` must be exactly `[_/<requestField>]` — two segments, `_` head
   (else err: "Injection targets must be [_/<request field>]").
-- `rvalue` must be an **expression**, not a record; validated with the same
+- `rvalue` must be an **expression**; validated with the same
   ACCESS rule (typically `{"type":"ref","qname":"@/sub"}`).
 - optional `condition` — same ACCESS rule.
 
@@ -210,8 +204,7 @@ Injections overwrite request fields from the actor. Each injection:
 | Forbidden (err) | `!/…` — "request fields are not available in subscriptions: there is no command"; `?/…`; `@/…` |
 
 The `seqno` literal rule (§1.1) applies here too. Sourced inputs are
-advisory snapshot reads of another element's read model — never locked, no
-consistency guarantee; an invariant that depends on the data belongs on the
+advisory, unlocked snapshot reads of another element's read model; an invariant that depends on the data belongs on the
 aggregate that owns it.
 
 ### 2.2 `effects[i]`
@@ -244,7 +237,7 @@ every rule below:
 
 - **`scope` decides `[_/…]`**: state/any handlers act on a hydrated instance
   — `_/…` is the process's fields (the entry-state snapshot); init handlers
-  create — the instance does not exist yet, so `_/…` is err everywhere.
+  create the instance, so `_/…` is err everywhere.
 - **The trigger decides `[^/…]` vs `[!/…]`**: intent handlers see the
   request as `!/…` (there is no observed fact); fact and deadline handlers
   see the observed/arming fact as `^/…` (there is no request). Never both.
@@ -261,8 +254,8 @@ are referencable.
 | `!/…` | the intent's request fields — the ONLY scope |
 | Forbidden (err) | `_/…` — "the key is computed from the request before the instance is loaded"; `^/…`; `?/…`; `@/…` |
 
-Required iff the intent has any state-scoped handler. An intent carries
-nothing else scriptable: it is a contract — `fields` + `correlate` +
+Required iff the intent has any state-scoped handler. An intent is a
+contract: `fields` + `correlate` +
 `access` (§1.6 applies to the access rule).
 
 ### 3.2 Event-trigger `correlate` (on the handler)
@@ -303,8 +296,8 @@ literal rule applies.
 | Forbidden (err) | `?/…`; `@/…` |
 
 TRUE rejects the trigger with a correlated rejection fact (guarantee 5). A
-request with **no handler at all** at its lifecycle position never reaches
-errors — that is the implicit lifecycle rejection (`errors: ["lifecycle"]`).
+request with **no handler at all** at its lifecycle position gets the implicit
+lifecycle rejection (`errors: ["lifecycle"]`).
 
 ### 3.6 `invariants[i].predicate`
 
@@ -359,7 +352,7 @@ Typical: `eq([_/orderId], [?/orderId])` — parent field left, parameter right.
 
 The `seqno` literal rule (§1.1) applies here too: a query with
 `"selection": "seqno"` carries the prefix as its condition and answers with the
-drawn counter string, so nothing in the table above is in scope for it.
+drawn counter string, so the table above applies to the other selections.
 
 ### 4.2 `invariants[i].predicate`
 
@@ -372,8 +365,8 @@ As §1.6, with `_/…` = the query's **parameter fields**.
 ## 5. Aggregate / entity / process `invariants[i].predicate`
 
 As §1.3, with `_/…` = the element's **own fields**. Uncompiled: foreign
-prefixes warn, unknown own fields err. (A process field named `state` does
-not exist — the machine-state column is implicit and reserved.)
+prefixes warn, unknown own fields err. (The machine-state column is implicit
+and reserved.)
 
 ## 6. Push / pull `access`
 

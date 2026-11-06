@@ -7734,7 +7734,7 @@ var require_utils2 = __commonJS({
     module.exports = Utils;
     Utils.prototype.makeDir = function(folder) {
       const self2 = this;
-      function mkdirSync5(fpath) {
+      function mkdirSync4(fpath) {
         let resolvedPath = fpath.split(self2.sep)[0];
         fpath.split(self2.sep).forEach(function(name) {
           if (!name || name.substr(-1, 1) === ":") return;
@@ -7752,7 +7752,7 @@ var require_utils2 = __commonJS({
           if (stat && stat.isFile()) throw Errors.FILE_IN_THE_WAY(`"${resolvedPath}"`);
         });
       }
-      mkdirSync5(folder);
+      mkdirSync4(folder);
     };
     Utils.prototype.writeFileTo = function(path, content, overwrite, attr) {
       const self2 = this;
@@ -9397,8 +9397,8 @@ var require_adm_zip = __commonJS({
         return null;
       }
       function fixPath(zipPath) {
-        const { join: join9, normalize, sep: sep2 } = pth.posix;
-        return join9(pth.isAbsolute(zipPath) ? "/" : ".", normalize(sep2 + zipPath.split("\\").join(sep2) + sep2));
+        const { join: join8, normalize, sep: sep2 } = pth.posix;
+        return join8(pth.isAbsolute(zipPath) ? "/" : ".", normalize(sep2 + zipPath.split("\\").join(sep2) + sep2));
       }
       function filenameFilter(filterfn) {
         if (filterfn instanceof RegExp) {
@@ -25890,22 +25890,6 @@ function validateScriptShape(script) {
   return problems;
 }
 
-// ../core-model/_build/src/util/index.js
-var util_exports2 = {};
-__export(util_exports2, {
-  ThrowableFault: () => ThrowableFault,
-  camel: () => camel,
-  kebab: () => kebab,
-  lower: () => lower,
-  lowerWords: () => lowerWords,
-  pascal: () => pascal,
-  pathify: () => pathify,
-  snake: () => snake,
-  titleWords: () => titleWords,
-  upper: () => upper,
-  uppersnake: () => uppersnake
-});
-
 // ../core-model/_build/src/util/casing.js
 function wordsOf(s) {
   let result = [];
@@ -27715,7 +27699,7 @@ function normalizeElementNames(element) {
 
 // _build/src/mcp/tools.js
 import * as Fss from "node:fs";
-import * as Path8 from "node:path";
+import * as Path7 from "node:path";
 
 // _build/src/api.js
 var ApiError = class extends Error {
@@ -28211,7 +28195,7 @@ function lower2(units, diags, sourceMap = {}) {
         const id = holderIds.get(holder);
         holderTypes.set(holder.name, [...holderTypes.get(holder.name) ?? [], id]);
       }
-  const typeOf2 = (field) => {
+  const typeOf = (field) => {
     const known = typesByName.get(field.typeName);
     if (known)
       return { functor: field.list ? "list" : "id", elementId: known.id };
@@ -28293,7 +28277,7 @@ function lower2(units, diags, sourceMap = {}) {
   const derivedSubscriptionName = (t) => "On" + (t.eventName.startsWith(t.sourceHolder) ? t.eventName : t.sourceHolder + t.eventName);
   const eventNameResolves = (name, scope) => eventsIndex.some((e) => e.name === name && e.ctxPath === (scope.ctxPath ?? ""));
   const lowerField = (f) => {
-    const field = { name: f.name, desc: f.desc, type: typeOf2(f) };
+    const field = { name: f.name, desc: f.desc, type: typeOf(f) };
     if (f.value)
       field.value = f.value;
     if (f.manualValue)
@@ -28366,7 +28350,7 @@ function lower2(units, diags, sourceMap = {}) {
     desc: i.desc,
     isManual: true,
     ...i.manualName ? { manualName: i.manualName } : {},
-    type: typeOf2({ name: i.name, desc: i.desc, typeName: i.typeName, list: i.list ?? false, loc: i.loc })
+    type: typeOf({ name: i.name, desc: i.desc, typeName: i.typeName, list: i.list ?? false, loc: i.loc })
   } : {
     name: i.name,
     desc: i.desc,
@@ -30831,963 +30815,6 @@ function locate(map, elementId, qualifier = []) {
   return entry.loc;
 }
 
-// ../core-dsl/_build/src/print-script.js
-var OPS = {
-  mul: { sym: "*", level: 1 },
-  div: { sym: "/", level: 1 },
-  add: { sym: "+", level: 2 },
-  sub: { sym: "-", level: 2 },
-  lt: { sym: "<", level: 3 },
-  gt: { sym: ">", level: 3 },
-  le: { sym: "<=", level: 3 },
-  ge: { sym: ">=", level: 3 },
-  eq: { sym: "==", level: 4 },
-  ne: { sym: "!=", level: 4 },
-  contains: { sym: "contains", level: 4 },
-  match: { sym: "matches", level: 4 },
-  in: { sym: "in", level: 4 },
-  and: { sym: "&&", level: 5 },
-  or: { sym: "||", level: 6 }
-};
-var LOOSE = 7;
-var TOP = 99;
-var RESERVED_HEADS = /* @__PURE__ */ new Set([
-  "self",
-  "request",
-  "params",
-  "event",
-  "actor",
-  "new",
-  "update",
-  "if",
-  "then",
-  "else",
-  "not",
-  "true",
-  "false",
-  "null",
-  "and",
-  "or",
-  "in",
-  "contains",
-  "matches",
-  "set",
-  "when",
-  "where",
-  "from",
-  "list",
-  "manual",
-  "original",
-  "identity",
-  "oneOf",
-  "allOf",
-  "pageOf",
-  "existOf",
-  "numberOf",
-  "seqno"
-]);
-var SCOPE_HEADS = {
-  _: "self",
-  "!": "request",
-  "?": "params",
-  "^": "event",
-  "@": "actor"
-};
-var kebabToCamel = (name) => name.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-function printScript(script) {
-  return print(script, TOP);
-}
-function normSegment(s) {
-  if (!/[ -]/.test(s))
-    return s;
-  return /^[A-Z]/.test(s) ? util_exports2.pascal(s) : util_exports2.camel(s);
-}
-function printRef(qname) {
-  if (qname.includes("::")) {
-    const [type, item] = qname.split("::");
-    return `${normSegment(type)}::${normSegment(item)}`;
-  }
-  const segments = qname.split("/").map(normSegment);
-  const scope = SCOPE_HEADS[segments[0]];
-  if (scope)
-    return [scope, ...segments.slice(1)].join(".");
-  const head = segments[0] === "elem" || !RESERVED_HEADS.has(segments[0]) ? segments[0] : "`" + segments[0] + "`";
-  return [head, ...segments.slice(1)].join(".");
-}
-function escapeString(value) {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\t/g, "\\t");
-}
-function print(s, maxLevel) {
-  const { text, level } = render(s);
-  return level > maxLevel ? `(${text})` : text;
-}
-function render(s) {
-  if (model_exports.isLit(s)) {
-    const text = s.base === "string" ? `"${escapeString(s.value)}"` : s.value;
-    return { text, level: 0 };
-  }
-  if (model_exports.isRef(s))
-    return { text: printRef(s.qname), level: 0 };
-  const fun = s;
-  const op = OPS[fun.name];
-  if (op && fun.args.length === 2) {
-    const left = print(fun.args[0], op.level);
-    const right = print(fun.args[1], op.level - 1);
-    return { text: `${left} ${op.sym} ${right}`, level: op.level };
-  }
-  switch (fun.name) {
-    case "not":
-      return { text: `!${print(fun.args[0], 0)}`, level: 0 };
-    case "is-null":
-      return { text: `${print(fun.args[0], 4)} == null`, level: 4 };
-    case "is-not-null":
-      return { text: `${print(fun.args[0], 4)} != null`, level: 4 };
-    case "iif":
-      if (fun.args.length === 3) {
-        const [c, t, e] = fun.args.map((a) => print(a, LOOSE));
-        return { text: `if ${c} then ${t} else ${e}`, level: LOOSE };
-      }
-      break;
-    case "new": {
-      const type = typeOf(fun.args[0]);
-      if (!type)
-        break;
-      const rest = fun.args.slice(1);
-      if (rest.every(isSet))
-        return { text: `new ${type}${printSets(rest)}`, level: 0 };
-      if (rest.length >= 1 && !rest.some(isSet))
-        return { text: `${type}(${rest.map((a) => print(a, TOP)).join(", ")})`, level: 0 };
-      break;
-    }
-    case "copy-from": {
-      const type = typeOf(fun.args[0]);
-      const source = fun.args[1];
-      const sets = fun.args.slice(2);
-      if (type && source && sets.every(isSet)) {
-        const overrides = sets.length > 0 ? printSets(sets) : "";
-        return { text: `new ${type} from ${print(source, 0)}${overrides}`, level: 0 };
-      }
-      break;
-    }
-    case "mk-list-of": {
-      const type = typeOf(fun.args[0]);
-      if (type)
-        return { text: `new list<${type}>`, level: 0 };
-      break;
-    }
-    case "find-and-update": {
-      const [list, cond, set] = fun.args;
-      if (list && cond && isSet(set)) {
-        const [field, value] = set.args;
-        const fieldName = model_exports.isRef(field) ? normSegment(field.qname) : print(field, 0);
-        const text = `update ${print(list, 0)} where ${print(cond, LOOSE - 1)} set ${fieldName} = ${print(value, LOOSE - 1)}`;
-        return { text, level: LOOSE };
-      }
-      break;
-    }
-  }
-  const args = fun.args.map((a) => print(a, TOP)).join(", ");
-  return { text: `${kebabToCamel(fun.name)}(${args})`, level: 0 };
-}
-var isSet = (s) => !!s && model_exports.isFun(s) && s.name === "set" && s.args.length === 2;
-var typeOf = (s) => s && model_exports.isRef(s) && !s.qname.includes("/") ? normSegment(s.qname) : null;
-function printSets(sets) {
-  if (sets.length === 0)
-    return " { }";
-  const bindings = sets.map((set) => {
-    const [field, value] = set.args;
-    const name = model_exports.isRef(field) ? normSegment(field.qname) : print(field, 0);
-    return `${name} = ${print(value, TOP)}`;
-  });
-  return ` { ${bindings.join(", ")} }`;
-}
-
-// ../core-dsl/_build/src/print.js
-var INDENT = "  ";
-var MAX_LINE = 100;
-function wrapWords(text, width) {
-  const words = text.split(/\s+/).filter(Boolean);
-  if (!words.length)
-    return [""];
-  const lines = [];
-  let cur = "";
-  for (const word of words) {
-    if (!cur)
-      cur = word;
-    else if (cur.length + 1 + word.length <= width)
-      cur += ` ${word}`;
-    else {
-      lines.push(cur);
-      cur = word;
-    }
-  }
-  lines.push(cur);
-  return lines;
-}
-function print2(elements, options = {}) {
-  const split = options.layout === "split";
-  const issues = [];
-  const report = (severity, context, message) => issues.push({ severity, message: `${context}: ${message}`, file: "<model>", line: 0, col: 0 });
-  const omit2 = (severity, context, what, why) => report(severity, context, `${what} has no DSL form here \u2014 ${why}; omitted from the printed source.`);
-  const paddingText = (padding, what, context) => {
-    if (padding === void 0)
-      return "";
-    if (!Number.isInteger(padding) || padding < 1 || padding > 18) {
-      omit2("wrn", context, `padding ${padding} of ${what}`, `a seqno width is 1..18 digits`);
-      return "";
-    }
-    return ` ${padding}`;
-  };
-  const siteOf = (name, surface = "element") => ({ name, surface });
-  const manualOk = (s) => s.surface === "element";
-  const byId = new Map(elements.map((e) => [e.id, e]));
-  const childrenOf = (pid) => elements.filter((e) => e.pid === pid);
-  const domain = elements.find((e) => e.metatype === "domain");
-  if (!domain)
-    report("err", "model", "No domain root element \u2014 nothing to print.");
-  const seen = /* @__PURE__ */ new Set();
-  const visit = (e) => (seen.add(e.id), e);
-  const contexts = childrenOf(model_exports.ROOT_ID).filter((e) => e.metatype === "context");
-  const ctxSlug = (name) => name.split(".").map((s) => util_exports2.camel(s)).join(".");
-  const isDerivedEvent = (e) => {
-    if (e.metatype !== "event")
-      return false;
-    const emitter = byId.get(model_exports.mirroredId(e.id))?.metatype;
-    return emitter === "command" || emitter === "policy";
-  };
-  const isDerivedStateEnum = (e) => e.metatype === "enumeration" && byId.get(model_exports.stateEnumId(e.id))?.metatype === "process";
-  const executables = [];
-  const queries = [];
-  const policyEmitters = [];
-  const holderPaths = /* @__PURE__ */ new Map();
-  const registerPorts = (holder, prefix) => {
-    for (const port of childrenOf(holder.id))
-      if (port.metatype === "push")
-        executables.push({ id: port.id, path: `${prefix}.${port.name}` });
-  };
-  for (const ctx of contexts) {
-    for (const holder of childrenOf(ctx.id)) {
-      const prefix = `${ctxSlug(ctx.name)}.${holder.name}`;
-      if (holder.metatype === "integration")
-        registerPorts(holder, prefix);
-      else if (!isDerivedEvent(holder))
-        holderPaths.set(holder.id, prefix);
-      for (const child of childrenOf(holder.id)) {
-        const path = `${prefix}.${child.name}`;
-        if (child.metatype === "command")
-          executables.push({ id: child.id, path, eventName: child.event?.name });
-        if (child.metatype === "query")
-          queries.push({ id: child.id, path });
-        if (child.metatype === "policy")
-          policyEmitters.push({ id: child.id, path, eventName: child.event?.name });
-      }
-    }
-  }
-  for (const e of elements) {
-    if (e.metatype === "integration" && e.pid === model_exports.ROOT_ID)
-      registerPorts(e, e.name);
-    if (e.metatype === "push" && e.pid === model_exports.ROOT_ID)
-      executables.push({ id: e.id, path: e.name });
-    if (e.metatype !== "gateway")
-      continue;
-    for (const cmd of e.commands)
-      executables.push({ id: cmd.id, path: `${e.name}.${cmd.name}`, eventName: cmd.event?.name });
-    for (const q of e.queries)
-      queries.push({ id: q.id, path: `${e.name}.${q.name}` });
-  }
-  const commandPath = (id, context) => {
-    const found = executables.find((c) => c.id === id);
-    if (!found)
-      report("err", context, `execute target id '${id}' does not resolve \u2014 emitting 'Unresolved'.`);
-    return found?.path ?? "Unresolved";
-  };
-  const eventPath = (triggerId, context) => {
-    const found = [...executables, ...policyEmitters].find((c) => model_exports.mirroredId(c.id) === triggerId);
-    if (found?.eventName)
-      return found.path.replace(/\.[^.]+$/, `.${normSegment(found.eventName)}`);
-    const rejected = executables.find((c) => model_exports.rejectionId(c.id) === triggerId);
-    if (rejected) {
-      const commandName = rejected.path.split(".").pop();
-      return rejected.path.replace(/\.[^.]+$/, `.${commandName}Rejected`);
-    }
-    report("err", context, `trigger id '${triggerId}' does not resolve to an event \u2014 emitting 'Unresolved'.`);
-    return "Unresolved";
-  };
-  const typeText = (type, context) => {
-    let name;
-    if (type.elementId.startsWith("#")) {
-      name = capitalize3(type.elementId.slice(1));
-      report("wrn", context, `bare primitive field type '${type.elementId}' \u2014 the DSL requires a term; emitted '${name}'.`);
-    } else {
-      const target = byId.get(type.elementId);
-      if (!target)
-        report("err", context, `field type id '${type.elementId}' does not resolve.`);
-      name = target?.name ?? "Unknown";
-    }
-    return type.functor === "list" ? `list<${name}>` : name;
-  };
-  const push = (lines, depth, text) => lines.push(INDENT.repeat(depth) + text);
-  const blank = (lines) => {
-    const last = lines[lines.length - 1];
-    if (last === void 0 || last === "")
-      return;
-    if (last.trimEnd().endsWith("{"))
-      return;
-    lines.push("");
-  };
-  const section = (lines, ...groups) => {
-    let prevGroup = -1;
-    let prevBlock = false;
-    groups.forEach((group, g) => {
-      for (const emit of group) {
-        const buf = [];
-        emit(buf);
-        if (buf.length === 0)
-          continue;
-        const lead = buf[0].trimStart();
-        const marked = lead.startsWith("///") || lead.startsWith("@");
-        const block = buf.length > 1;
-        if (prevGroup !== -1 && (g !== prevGroup || marked || block || prevBlock))
-          blank(lines);
-        lines.push(...buf);
-        prevGroup = g;
-        prevBlock = block;
-      }
-    });
-  };
-  const one = (cond, emit) => cond ? [emit] : [];
-  const pushDesc = (lines, depth, desc) => {
-    if (!desc)
-      return;
-    const avail = Math.max(1, MAX_LINE - depth * INDENT.length - "/// ".length);
-    for (const line of desc.split("\n")) {
-      if (line.trimEnd().length <= avail)
-        push(lines, depth, `/// ${line}`.trimEnd());
-      else
-        for (const l of wrapWords(line, avail))
-          push(lines, depth, `/// ${l}`);
-    }
-  };
-  const SELECTION_WORD = {
-    one: "oneOf",
-    many: "allOf",
-    page: "pageOf",
-    exist: "existOf",
-    count: "numberOf"
-  };
-  const pushField = (lines, depth, f, site, isEventField = false) => {
-    const where = `${site.name}.${f.name}`;
-    let manual = !!f.isManualValue;
-    if (manual && !isEventField) {
-      omit2("wrn", where, `'@manual' on field '${f.name}'`, `only event fields carry a computed value`);
-      manual = false;
-    } else if (manual && !manualOk(site)) {
-      omit2("wrn", where, `'@manual' on event field '${f.name}'`, site.surface === "handler" ? `process handlers have no manual path` : `a gateway generates no flow class`);
-      manual = false;
-    }
-    let value = f.value;
-    if (value && !isEventField) {
-      omit2("wrn", where, `value script on field '${f.name}'`, `only event fields take a value script`);
-      value = void 0;
-    }
-    pushDesc(lines, depth, f.desc);
-    if (manual)
-      push(lines, depth, `@manual(${normSegment(f.manualName ?? f.name)})`);
-    const tail = manual ? "" : value ? ` = ${printScript(value)}` : "";
-    push(lines, depth, `field ${normSegment(f.name)}: ${typeText(f.type, where)}${tail}`);
-  };
-  const pushError = (lines, depth, e, site) => {
-    if (site.surface === "handler" && (e.isManualCondition || !e.condition)) {
-      omit2("err", site.name, `error '${e.name}'`, `a process handler's errors need 'when <expr>'`);
-      return;
-    }
-    let manual = !!e.isManualCondition;
-    if (manual && !manualOk(site)) {
-      omit2("wrn", site.name, `'@manual' condition of error '${e.name}'`, `a gateway generates no flow class`);
-      manual = false;
-    }
-    pushDesc(lines, depth, e.desc);
-    if (manual)
-      push(lines, depth, `@manual(${normSegment(e.manualName ?? e.name)})`);
-    const when = manual ? "" : e.condition ? ` when ${printScript(e.condition)}` : "";
-    push(lines, depth, `error ${normSegment(e.name)} "${escapeString(e.message)}"${when}`);
-  };
-  const pushInvariant = (lines, depth, inv, index, context) => {
-    pushDesc(lines, depth, inv.desc);
-    let name = normSegment(inv.name);
-    if (!name) {
-      name = `invariant${index + 1}`;
-      report("wrn", context, `unnamed invariant \u2014 emitted '${name}'.`);
-    }
-    push(lines, depth, `invariant ${name}: ${printScript(inv.predicate)}`);
-  };
-  const pushInput = (lines, depth, input, site) => {
-    const context = site.name;
-    if (input.isManual && !manualOk(site)) {
-      omit2("err", context, `manual input '${input.name}'`, site.surface === "handler" ? `a process handler has no manual path and the input has no selection to print instead` : `a gateway generates no flow class and the input has no selection to print instead`);
-      return;
-    }
-    pushDesc(lines, depth, input.desc);
-    if (input.isManual) {
-      if (!input.type)
-        report("err", context, `manual input '${input.name}' has no declared type \u2014 emitting 'Unknown'.`);
-      const type = input.type ? typeText(input.type, `${context}.${input.name}`) : "Unknown";
-      push(lines, depth, `@manual(${normSegment(input.manualName ?? input.name)})`);
-      push(lines, depth, `input ${normSegment(input.name)}: ${type}`);
-      return;
-    }
-    let sourceId = input.sourceId;
-    if (sourceId && input.selection === "seqno") {
-      omit2("wrn", context, `'from' clause of seqno input '${input.name}'`, `a seqno input reads the local sequence`);
-      sourceId = void 0;
-    }
-    push(lines, depth, `input ${normSegment(input.name)} {`);
-    if (sourceId) {
-      const path = holderPaths.get(sourceId);
-      if (!path)
-        report("err", context, `input source id '${sourceId}' does not resolve \u2014 emitting 'Unresolved'.`);
-      push(lines, depth + 1, `from ${path ?? "Unresolved"}`);
-    }
-    if (input.selection === "seqno") {
-      const ns = input.condition && model_exports.isLit(input.condition) ? input.condition.value : "";
-      if (!ns)
-        report("wrn", context, `seqno input '${input.name}' has no namespace string.`);
-      push(lines, depth + 1, `seqno "${escapeString(ns)}"${paddingText(input.padding, `input '${input.name}'`, context)}`);
-    } else {
-      if (input.padding !== void 0)
-        omit2("wrn", context, `padding of input '${input.name}'`, `only a seqno input pads a counter`);
-      const word = SELECTION_WORD[input.selection ?? "one"] ?? "oneOf";
-      const cond = input.condition ? ` ${printScript(input.condition)}` : "";
-      push(lines, depth + 1, `${word}${cond}`);
-    }
-    push(lines, depth, "}");
-  };
-  const pushRecord = (lines, depth, record2, prefix = "") => {
-    for (const binding of record2) {
-      const rawSegments = binding.lvalue.qname.split("/");
-      const lvalue = (rawSegments[0] === "_" ? rawSegments.slice(1) : rawSegments).map(normSegment).join(".");
-      const when = binding.condition ? ` when ${printScript(binding.condition)}` : "";
-      if (binding.rvalue === null || binding.rvalue === void 0) {
-        push(lines, depth, `${prefix}${lvalue} = null${when}`);
-      } else if (model_exports.isRecord(binding.rvalue)) {
-        push(lines, depth, `${prefix}${lvalue} = {`);
-        pushRecord(lines, depth + 1, binding.rvalue);
-        push(lines, depth, `}${when}`);
-      } else {
-        push(lines, depth, `${prefix}${lvalue} = ${printScript(binding.rvalue)}${when}`);
-      }
-    }
-  };
-  const pushEffect = (lines, depth, effect) => {
-    pushDesc(lines, depth, effect.desc);
-    if (effect.type === "manual") {
-      push(lines, depth, `@manual(${normSegment(effect.name)})`);
-      push(lines, depth, `effect${effect.kind ? ` ${effect.kind}` : ""}`);
-      return;
-    }
-    const d = depth + 1;
-    const kind = effect.type === "updateMany" ? "update" : effect.type === "remove" || effect.type === "deleteMany" ? "delete" : effect.type;
-    push(lines, depth, `effect ${kind} {`);
-    if (effect.condition)
-      push(lines, d, `when ${printScript(effect.condition)}`);
-    switch (effect.type) {
-      case "insert":
-      case "replace":
-      case "upsert":
-        if (effect.original)
-          push(lines, d, `original ${printRef(effect.original.qname)}`);
-        pushRecord(lines, d, effect.data, "set ");
-        break;
-      case "update":
-      case "updateMany":
-        push(lines, d, `${effect.type === "updateMany" ? "allOf" : "oneOf"} ${printScript(effect.where)}`);
-        pushRecord(lines, d, effect.patch, "set ");
-        break;
-      case "remove":
-        push(lines, d, `identity ${printScript(effect.identity)}`);
-        break;
-      case "deleteMany":
-        push(lines, d, `allOf ${printScript(effect.where)}`);
-        break;
-    }
-    push(lines, depth, "}");
-  };
-  const pushAccess = (lines, depth, access, context) => {
-    push(lines, depth, "access {");
-    if (access.rule)
-      push(lines, depth + 1, `rule ${printScript(access.rule)}`);
-    for (const inj of access.injections) {
-      const segments = inj.lvalue.qname.split("/");
-      const scoped = segments[0] === "_" && segments.length === 2;
-      const name = scoped ? normSegment(segments[1]) : normSegment(inj.lvalue.qname);
-      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
-        omit2("err", context, `injection '${inj.lvalue.qname}'`, `'inject' binds one request field by name`);
-        continue;
-      }
-      if (!scoped)
-        report("wrn", context, `injection lvalue '${inj.lvalue.qname}' is not [_/<field>].`);
-      if (model_exports.isRecord(inj.rvalue)) {
-        omit2("err", context, `injection '${name}'`, `'inject' takes an expression, not a record`);
-        continue;
-      }
-      const rvalue = inj.rvalue === null || inj.rvalue === void 0 ? "null" : printScript(inj.rvalue);
-      const when = inj.condition ? ` when ${printScript(inj.condition)}` : "";
-      push(lines, depth + 1, `inject ${name} = ${rvalue}${when}`);
-    }
-    push(lines, depth, "}");
-  };
-  const pushEventClause = (lines, depth, event, site) => {
-    if (event.fields.length === 0) {
-      push(lines, depth, `event ${normSegment(event.name)}`);
-    } else {
-      push(lines, depth, `event ${normSegment(event.name)} {`);
-      section(lines, event.fields.map((f) => (out) => pushField(out, depth + 1, f, site, true)));
-      push(lines, depth, "}");
-    }
-  };
-  const pushDispatch = (lines, depth, dispatch, context, bare = false) => {
-    pushDesc(lines, depth, dispatch.desc);
-    const full = commandPath(dispatch.commandId, context);
-    const path = bare ? full.split(".").pop() : full;
-    if (dispatch.data.length === 0 && !dispatch.condition) {
-      push(lines, depth, `dispatch ${path}`);
-      return;
-    }
-    push(lines, depth, `dispatch ${path} {`);
-    if (dispatch.condition)
-      push(lines, depth + 1, `when ${printScript(dispatch.condition)}`);
-    pushRecord(lines, depth + 1, dispatch.data, "set ");
-    push(lines, depth, "}");
-  };
-  const pushTimer = (lines, depth, timer, context) => {
-    pushDesc(lines, depth, timer.desc);
-    push(lines, depth, `after ${printScript(timer.interval)} ${model_exports.unitWord(timer.unit)} {`);
-    if (timer.condition)
-      push(lines, depth + 1, `when ${printScript(timer.condition)}`);
-    if (timer.key)
-      push(lines, depth + 1, `key ${printScript(timer.key)}`);
-    pushDispatch(lines, depth + 1, timer.dispatch, context, true);
-    push(lines, depth, "}");
-  };
-  const pushCommand = (lines, depth, cmd, surface = "element") => {
-    if (cmd.manualFlowCode)
-      report("wrn", cmd.name, `legacy manualFlowCode dropped \u2014 hand-written flows live under the project's manual/ tree.`);
-    const site = siteOf(cmd.name, surface);
-    pushDesc(lines, depth, cmd.desc);
-    if (cmd.isManualFlow) {
-      if (manualOk(site))
-        push(lines, depth, "@manual");
-      else
-        omit2("wrn", cmd.name, `'@manual' on command '${cmd.name}'`, `a gateway declares contracts only`);
-    }
-    push(lines, depth, `command ${cmd.name} {`);
-    const d = depth + 1;
-    section(lines, cmd.fields.map((f) => (out) => pushField(out, d, f, site)), one(cmd.event, (out) => pushEventClause(out, d, cmd.event, site)), cmd.inputs.map((i) => (out) => pushInput(out, d, i, site)), cmd.errors.map((e) => (out) => pushError(out, d, e, site)), cmd.invariants.map((inv, i) => (out) => pushInvariant(out, d, inv, i, cmd.name)), cmd.effects.map((e) => (out) => pushEffect(out, d, e)), (cmd.dispatches ?? []).map((x) => (out) => pushDispatch(out, d, x, cmd.name)), (cmd.timers ?? []).map((x) => (out) => pushTimer(out, d, x, cmd.name)), one(cmd.access, (out) => pushAccess(out, d, cmd.access, cmd.name)));
-    push(lines, depth, "}");
-  };
-  const derivedHandlerName = (policy, printedTrigger) => {
-    if (policy.trigger.type === "deadline") {
-      const { value, unit } = policy.trigger.duration;
-      return `After${value}${unit.toUpperCase()}`;
-    }
-    const segs = printedTrigger.split(".").filter((s) => /^[A-Z]/.test(s));
-    const last = segs[segs.length - 1] ?? "";
-    const prev = segs.length > 1 ? segs[segs.length - 2] : "";
-    return "On" + (prev && last.startsWith(prev) ? [...segs.slice(0, -2), last] : segs).join("");
-  };
-  const pushHandler = (lines, depth, policy) => {
-    pushDesc(lines, depth, policy.desc);
-    let clause;
-    let printedTrigger;
-    if (policy.trigger.type === "event") {
-      printedTrigger = eventPath(policy.trigger.eventId, policy.name);
-      const correlate = policy.trigger.correlate ? ` correlate by ${printScript(policy.trigger.correlate)}` : "";
-      clause = `on ${printedTrigger}${correlate}`;
-    } else if (policy.trigger.type === "intent") {
-      const intent = byId.get(policy.trigger.intentId);
-      if (!intent)
-        report("err", policy.name, `intent trigger id '${policy.trigger.intentId}' does not resolve.`);
-      printedTrigger = intent?.name ?? "Unresolved";
-      clause = `on ${printedTrigger}`;
-    } else {
-      printedTrigger = "";
-      clause = `after ${policy.trigger.duration.value}${policy.trigger.duration.unit}`;
-    }
-    if (policy.name !== derivedHandlerName(policy, printedTrigger))
-      report("wrn", policy.name, `handler name '${policy.name}' is not derivable from its trigger \u2014 it will re-derive on compile.`);
-    const guard = policy.guard ? ` when ${printScript(policy.guard)}` : "";
-    push(lines, depth, `${clause}${guard} {`);
-    const d = depth + 1;
-    const site = siteOf(policy.name, "handler");
-    const pushTransition = (out, transition) => {
-      if (transition.data.length === 0) {
-        push(out, d, `transition ${normSegment(transition.to)}`);
-      } else {
-        push(out, d, `transition ${normSegment(transition.to)} {`);
-        pushRecord(out, d + 1, transition.data);
-        push(out, d, "}");
-      }
-    };
-    section(lines, one(policy.event, (out) => pushEventClause(out, d, policy.event, site)), policy.inputs.map((i) => (out) => pushInput(out, d, i, site)), policy.errors.map((e) => (out) => pushError(out, d, e, site)), policy.invariants.map((inv, i) => (out) => pushInvariant(out, d, inv, i, policy.name)), one(policy.transition, (out) => pushTransition(out, policy.transition)), policy.dispatches.map((x) => (out) => pushDispatch(out, d, x, policy.name)));
-    push(lines, depth, "}");
-  };
-  const pushIntent = (lines, depth, cmd) => {
-    pushDesc(lines, depth, cmd.desc);
-    const correlate = cmd.correlate ? ` correlate by ${printScript(cmd.correlate)}` : "";
-    const hasBody = cmd.fields.length > 0 || cmd.access;
-    if (!hasBody) {
-      push(lines, depth, `intent ${cmd.name}${correlate}`);
-      return;
-    }
-    push(lines, depth, `intent ${cmd.name}${correlate} {`);
-    const d = depth + 1;
-    section(lines, cmd.fields.map((f) => (out) => pushField(out, d, f, siteOf(cmd.name))), one(cmd.access, (out) => pushAccess(out, d, cmd.access, cmd.name)));
-    push(lines, depth, "}");
-  };
-  const pushProcessBody = (lines, holder) => {
-    const children = childrenOf(holder.id).filter((c) => !isDerivedEvent(c));
-    children.forEach(visit);
-    const intents = children.filter(model_exports.isCommand);
-    const printableHandler = (h) => {
-      if (h.trigger.type !== "deadline" || h.scope.kind === "state")
-        return true;
-      const { value, unit } = h.trigger.duration;
-      omit2("err", `${holder.name}.${h.name}`, `${h.scope.kind}-scoped deadline 'after ${value}${unit}'`, `deadlines live inside a state`);
-      return false;
-    };
-    const handlers = children.filter(model_exports.isPolicy).filter(printableHandler);
-    const ofScope = (pred) => handlers.filter((h) => pred(h.scope));
-    for (const intent of intents) {
-      blank(lines);
-      pushIntent(lines, 1, intent);
-    }
-    const init = ofScope((s) => s.kind === "init");
-    if (init.length > 0) {
-      blank(lines);
-      push(lines, 1, `init {`);
-      init.forEach((h, i) => {
-        if (i > 0)
-          blank(lines);
-        pushHandler(lines, 2, h);
-      });
-      push(lines, 1, "}");
-    }
-    for (const state of holder.states) {
-      blank(lines);
-      pushDesc(lines, 1, state.desc);
-      const inState = ofScope((s) => s.kind === "state" && s.state === state.name);
-      if (inState.length === 0) {
-        push(lines, 1, `state ${normSegment(state.name)} {`);
-        push(lines, 1, "}");
-        continue;
-      }
-      push(lines, 1, `state ${normSegment(state.name)} {`);
-      inState.forEach((h, i) => {
-        if (i > 0)
-          blank(lines);
-        pushHandler(lines, 2, h);
-      });
-      push(lines, 1, "}");
-    }
-    for (let i = 0; i < holder.finals.length; ) {
-      let j = i + 1;
-      while (j < holder.finals.length && holder.finals[j].desc === holder.finals[i].desc)
-        ++j;
-      blank(lines);
-      pushDesc(lines, 1, holder.finals[i].desc);
-      push(lines, 1, `final ${holder.finals.slice(i, j).map((f) => normSegment(f.name)).join(" ")}`);
-      i = j;
-    }
-    for (const h of ofScope((s) => s.kind === "any")) {
-      blank(lines);
-      pushHandler(lines, 1, h);
-    }
-  };
-  const pushQuery = (lines, depth, query, surface = "element") => {
-    if (query.manualFlowCode)
-      report("wrn", query.name, `legacy manualFlowCode dropped \u2014 hand-written flows live under the project's manual/ tree.`);
-    const site = siteOf(query.name, surface);
-    pushDesc(lines, depth, query.desc);
-    if (query.isManualFlow) {
-      if (manualOk(site))
-        push(lines, depth, "@manual");
-      else
-        omit2("wrn", query.name, `'@manual' on query '${query.name}'`, `a gateway declares contracts only`);
-    }
-    push(lines, depth, `query ${query.name} {`);
-    const d = depth + 1;
-    const pushSelection = (out) => {
-      if (query.selection === "seqno") {
-        const ns = query.condition && model_exports.isLit(query.condition) ? query.condition.value : "";
-        if (!ns)
-          report("wrn", query.name, `seqno query has no namespace string.`);
-        push(out, d, `seqno "${escapeString(ns)}"${paddingText(query.padding, `query '${query.name}'`, query.name)}`);
-      } else {
-        if (query.padding !== void 0)
-          omit2("wrn", query.name, `padding of query '${query.name}'`, `only a seqno query pads a counter`);
-        const word = SELECTION_WORD[query.selection] ?? "oneOf";
-        push(out, d, `${word}${query.condition ? ` ${printScript(query.condition)}` : ""}`);
-      }
-    };
-    section(lines, query.fields.map((f) => (out) => pushField(out, d, f, site)), query.invariants.map((inv, i) => (out) => pushInvariant(out, d, inv, i, query.name)), [pushSelection], one(query.access, (out) => pushAccess(out, d, query.access, query.name)));
-    push(lines, depth, "}");
-  };
-  const pushSubscription = (lines, depth, sub) => {
-    if (sub.manualFlowCode)
-      report("wrn", sub.name, `legacy manualFlowCode dropped \u2014 hand-written flows live under the project's manual/ tree.`);
-    pushDesc(lines, depth, sub.desc);
-    if (sub.isManualFlow)
-      push(lines, depth, "@manual");
-    if (sub.isManualFlow && sub.inputs.length === 0 && sub.effects.length === 0) {
-      push(lines, depth, `on ${eventPath(sub.triggerId, sub.name)}`);
-      return;
-    }
-    push(lines, depth, `on ${eventPath(sub.triggerId, sub.name)} {`);
-    const d = depth + 1;
-    section(lines, sub.inputs.map((i) => (out) => pushInput(out, d, i, siteOf(sub.name))), sub.effects.map((e) => (out) => pushEffect(out, d, e)));
-    push(lines, depth, "}");
-  };
-  const constraintText = (c) => {
-    switch (c.type) {
-      case "greater-than":
-        return `> ${c.value}`;
-      case "greater-than-or-equal":
-        return `>= ${c.value}`;
-      case "less-than":
-        return `< ${c.value}`;
-      case "less-than-or-equal":
-        return `<= ${c.value}`;
-      case "pattern":
-        return `pattern "${escapeString(c.regex)}"`;
-      case "format":
-        return `format ${c.value}`;
-      case "before":
-        return `before ${c.date}`;
-      case "after":
-        return `after ${c.date}`;
-      case "within-days":
-        return `within-days ${c.days}`;
-      case "starts-with":
-      case "ends-with":
-      case "contains":
-        return `${c.type} "${escapeString(c.value)}"`;
-      default:
-        return `${c.type} ${c.value ?? ""}`.trim();
-    }
-  };
-  const pushResultClause = (lines, depth, result, site) => {
-    push(lines, depth, result.functor === "list" ? "result list {" : "result {");
-    section(lines, result.fields.map((f) => (out) => pushField(out, depth + 1, f, site)));
-    push(lines, depth, "}");
-  };
-  const pushPort = (lines, depth, e) => {
-    push(lines, depth, `${e.metatype} ${e.name} {`);
-    const d = depth + 1;
-    const result = model_exports.isPull(e) ? e.result : void 0;
-    section(lines, e.fields.map((f) => (out) => pushField(out, d, f, siteOf(e.name))), one(result, (out) => pushResultClause(out, d, result, siteOf(e.name))), one(e.access, (out) => pushAccess(out, d, e.access, e.name)));
-    push(lines, depth, "}");
-  };
-  const pushIntegration = (lines, depth, e) => {
-    push(lines, depth, `integration ${e.name} {`);
-    section(lines, e.fields.map((f) => (out) => pushField(out, depth + 1, f, siteOf(e.name))));
-    for (const child of childrenOf(e.id)) {
-      blank(lines);
-      if (child.metatype === "push" || child.metatype === "pull") {
-        pushDesc(lines, depth + 1, child.desc);
-        pushPort(lines, depth + 1, visit(child));
-      } else {
-        report("err", child.name, `unexpected integration child of metatype '${child.metatype}'.`);
-      }
-    }
-    push(lines, depth, "}");
-  };
-  const rootLines = [];
-  if (domain) {
-    pushDesc(rootLines, 0, domain.desc);
-    push(rootLines, 0, `domain ${domain.name}`);
-    visit(domain);
-  }
-  const printedRoots = /* @__PURE__ */ new Map();
-  for (const e of childrenOf(model_exports.ROOT_ID)) {
-    if (e.metatype === "context")
-      continue;
-    if (isDerivedEvent(e) || isDerivedStateEnum(e)) {
-      visit(e);
-      continue;
-    }
-    visit(e);
-    const rootKey = `${e.metatype}:${e.name}`;
-    const prior = printedRoots.get(rootKey);
-    if (prior) {
-      const shapeOf = ({ id, pid, desc, ...rest }) => JSON.stringify(rest);
-      if (shapeOf(prior) === shapeOf(e))
-        report("wrn", e.name, `duplicate identical ${e.metatype} merged.`);
-      else
-        report("err", e.name, `two different root ${e.metatype}s share this name \u2014 rename one.`);
-      continue;
-    }
-    printedRoots.set(rootKey, e);
-    blank(rootLines);
-    pushDesc(rootLines, 0, e.desc);
-    switch (e.metatype) {
-      case "term":
-        if (e.constraints.length === 0) {
-          push(rootLines, 0, `term ${e.name}: ${e.primitive}`);
-        } else if (e.constraints.length === 1) {
-          push(rootLines, 0, `term ${e.name}: ${e.primitive} { ${constraintText(e.constraints[0])} }`);
-        } else {
-          push(rootLines, 0, `term ${e.name}: ${e.primitive} {`);
-          e.constraints.forEach((c) => push(rootLines, 1, constraintText(c)));
-          push(rootLines, 0, "}");
-        }
-        break;
-      case "enumeration":
-        push(rootLines, 0, `enum ${e.name} {`);
-        section(rootLines, e.items.map((item) => (out) => {
-          pushDesc(out, 1, item.desc);
-          push(out, 1, `item ${normSegment(item.name)}`);
-        }));
-        push(rootLines, 0, "}");
-        break;
-      case "valuetype":
-        push(rootLines, 0, `valuetype ${e.name} {`);
-        section(rootLines, e.fields.map((f) => (out) => pushField(out, 1, f, siteOf(e.name))));
-        push(rootLines, 0, "}");
-        break;
-      case "actor":
-        push(rootLines, 0, "actor {");
-        section(rootLines, e.fields.map((f) => (out) => {
-          pushDesc(out, 1, f.desc);
-          const type = typeText(f.type, `actor.${f.name}`);
-          const optional2 = f.isOptional ? " optional" : "";
-          push(out, 1, `field ${normSegment(f.name)}: ${type} claim "${escapeString(f.claim)}"${optional2}`);
-        }));
-        push(rootLines, 0, "}");
-        break;
-      case "integration":
-        pushIntegration(rootLines, 0, e);
-        break;
-      case "entity":
-        push(rootLines, 0, `entity ${e.name} {`);
-        section(rootLines, e.fields.map((f) => (out) => pushField(out, 1, f, siteOf(e.name))), e.invariants.map((inv, i) => (out) => pushInvariant(out, 1, inv, i, e.name)));
-        push(rootLines, 0, "}");
-        break;
-      case "push":
-      case "pull":
-        pushPort(rootLines, 0, e);
-        break;
-      case "gateway":
-        push(rootLines, 0, `gateway ${e.name} {`);
-        e.commands.forEach((cmd, i) => {
-          if (i > 0)
-            blank(rootLines);
-          pushCommand(rootLines, 1, cmd, "gateway");
-        });
-        e.queries.forEach((q) => {
-          blank(rootLines);
-          pushQuery(rootLines, 1, q, "gateway");
-        });
-        push(rootLines, 0, "}");
-        break;
-      case "event":
-        break;
-      // derived — never printed
-      default:
-        report("err", e.name, `unexpected root element of metatype '${e.metatype}'.`);
-    }
-  }
-  const files = [];
-  files.push({ path: "domain.nomiq", text: rootLines.join("\n") + "\n" });
-  const pushAggregateShell = (lines, holder) => {
-    pushDesc(lines, 0, holder.desc);
-    push(lines, 0, `aggregate ${holder.name} {`);
-    section(lines, holder.fields.map((f) => (out) => pushField(out, 1, f, siteOf(holder.name))), holder.invariants.map((inv, i) => (out) => pushInvariant(out, 1, inv, i, holder.name)));
-  };
-  const pushProjectionShell = (lines, holder) => {
-    pushDesc(lines, 0, holder.desc);
-    push(lines, 0, `projection ${holder.name} {`);
-    section(lines, holder.fields.map((f) => (out) => pushField(out, 1, f, siteOf(holder.name))));
-  };
-  const pushProcessShell = (lines, holder) => {
-    pushDesc(lines, 0, holder.desc);
-    push(lines, 0, `process ${holder.name} {`);
-    section(lines, holder.fields.map((f) => (out) => pushField(out, 1, f, siteOf(holder.name))), holder.invariants.map((inv, i) => (out) => pushInvariant(out, 1, inv, i, holder.name)));
-  };
-  const pushChild = (lines, depth, child) => {
-    if (child.metatype === "command")
-      pushCommand(lines, depth, child);
-    else if (child.metatype === "query")
-      pushQuery(lines, depth, child);
-    else if (child.metatype === "subscription")
-      pushSubscription(lines, depth, child);
-    else
-      return false;
-    return true;
-  };
-  for (const ctx of contexts) {
-    visit(ctx);
-    const slug = ctxSlug(ctx.name);
-    const header = (lines) => push(lines, 0, `context ${slug}`);
-    const nameCount = /* @__PURE__ */ new Map();
-    for (const h of childrenOf(ctx.id))
-      if (!isDerivedEvent(h))
-        nameCount.set(h.name, (nameCount.get(h.name) ?? 0) + 1);
-    const holderFile = (h) => (nameCount.get(h.name) ?? 0) > 1 ? `${slug}/${h.name}.${h.metatype}.nomiq` : `${slug}/${h.name}.nomiq`;
-    const compactLines = [];
-    if (!split)
-      header(compactLines);
-    for (const holder of childrenOf(ctx.id)) {
-      visit(holder);
-      if (isDerivedEvent(holder))
-        continue;
-      if (holder.metatype !== "aggregate" && holder.metatype !== "projection" && holder.metatype !== "process") {
-        const lines2 = split ? [] : compactLines;
-        if (split)
-          header(lines2);
-        blank(lines2);
-        pushDesc(lines2, 0, holder.desc);
-        if (holder.metatype === "integration")
-          pushIntegration(lines2, 0, holder);
-        else
-          report("err", holder.name, `unexpected context child of metatype '${holder.metatype}'.`);
-        if (split)
-          files.push({ path: holderFile(holder), text: lines2.join("\n") + "\n" });
-        continue;
-      }
-      const shell = (lines2) => holder.metatype === "aggregate" ? pushAggregateShell(lines2, holder) : holder.metatype === "process" ? pushProcessShell(lines2, holder) : pushProjectionShell(lines2, holder);
-      const lines = split ? [] : compactLines;
-      if (split)
-        header(lines);
-      blank(lines);
-      shell(lines);
-      if (holder.metatype === "process") {
-        pushProcessBody(lines, holder);
-      } else {
-        for (const child of childrenOf(holder.id)) {
-          visit(child);
-          if (isDerivedEvent(child))
-            continue;
-          blank(lines);
-          if (!pushChild(lines, 1, child))
-            report("err", child.name, `unexpected ${holder.metatype} child of metatype '${child.metatype}'.`);
-        }
-      }
-      push(lines, 0, "}");
-      if (split)
-        files.push({ path: holderFile(holder), text: lines.join("\n") + "\n" });
-    }
-    if (!split)
-      files.push({ path: `${slug}.nomiq`, text: compactLines.join("\n") + "\n" });
-  }
-  for (const e of elements) {
-    if (seen.has(e.id) || isDerivedEvent(e) || isDerivedStateEnum(e))
-      continue;
-    report("err", e.name, `unreachable element (${e.metatype}) \u2014 its parent chain does not reach the domain root.`);
-  }
-  return { files, issues };
-}
-var capitalize3 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-
 // ../core-dsl/_build/src/index.js
 function compile(sources) {
   const diags = new Diagnostics();
@@ -31840,27 +30867,6 @@ function compileDsl(projectDir) {
     sourceFiles: sources.map((s) => s.path),
     sourceMap: result.sourceMap
   };
-}
-function importDsl(projectDir, elements, overwrite, layout = "split") {
-  const dir = dslDirOf(projectDir);
-  const existing = listNomiqFiles(dir);
-  if (existing.length > 0 && !overwrite) {
-    return {
-      error: `${dslDirName(projectDir)}/ already contains ${existing.length} .nomiq file(s) \u2014 pass overwrite: true to replace them.`
-    };
-  }
-  const printed = print2(elements, { layout });
-  const issues = printed.issues.map((d) => toDslIssue(projectDir, d));
-  if (printed.issues.some((i) => i.severity === "err"))
-    return { files: [], issues };
-  Fs3.rmSync(dir, { recursive: true, force: true });
-  Fs3.mkdirSync(dir, { recursive: true });
-  for (const file of printed.files) {
-    const absolute = Path3.join(dir, file.path);
-    Fs3.mkdirSync(Path3.dirname(absolute), { recursive: true });
-    Fs3.writeFileSync(absolute, file.text);
-  }
-  return { files: printed.files.map((f) => f.path), issues };
 }
 
 // _build/src/generate.js
@@ -32213,165 +31219,7 @@ function readDoc(name) {
   return Fs6.readFileSync(docPath(name), "utf8");
 }
 
-// _build/src/schema-check.js
-function formatPath(path) {
-  let out = "";
-  for (const part of path) {
-    if (typeof part === "number")
-      out += `[${part}]`;
-    else
-      out += out ? `.${part}` : part;
-  }
-  return out;
-}
-function checkSchema(file) {
-  const result = model_exports.Element_S.safeParse(file.element);
-  if (result.success)
-    return [];
-  return result.error.issues.map((issue2) => ({
-    file: file.relPath,
-    path: formatPath(issue2.path),
-    severity: "err",
-    message: issue2.message
-  }));
-}
-function checkSchemas(store) {
-  return store.files.flatMap((file) => checkSchema(file));
-}
-
 // _build/src/store.js
-import * as Fs7 from "node:fs";
-import * as Path7 from "node:path";
-var MODEL_DIR = Path7.join(".nomiq", "model");
-function modelDirOf(projectDir) {
-  return Path7.join(projectDir, MODEL_DIR);
-}
-function listJsonFiles(dir, prefix = "") {
-  const found = [];
-  for (const entry of Fs7.readdirSync(dir, { withFileTypes: true })) {
-    const rel = prefix ? Path7.join(prefix, entry.name) : entry.name;
-    if (entry.isDirectory())
-      found.push(...listJsonFiles(Path7.join(dir, entry.name), rel));
-    else if (entry.isFile() && entry.name.endsWith(".json"))
-      found.push(rel);
-  }
-  return found.sort();
-}
-function scanModel(projectDir) {
-  const dir = modelDirOf(projectDir);
-  const store = { dir, files: [], index: /* @__PURE__ */ new Map(), issues: [] };
-  if (!Fs7.existsSync(dir)) {
-    store.issues.push({
-      severity: "err",
-      message: `Model directory not found: ${MODEL_DIR}. Run the nomiq init skill first.`
-    });
-    return store;
-  }
-  for (const relPath of listJsonFiles(dir)) {
-    let parsed;
-    try {
-      parsed = JSON.parse(Fs7.readFileSync(Path7.join(dir, relPath), "utf-8"));
-    } catch (e) {
-      store.issues.push({ file: relPath, severity: "err", message: `Invalid JSON: ${e.message}` });
-      continue;
-    }
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      store.issues.push({ file: relPath, severity: "err", message: "File must contain a single element object." });
-      continue;
-    }
-    const el = parsed;
-    for (const key of ["id", "pid", "metatype", "name"]) {
-      if (typeof el[key] !== "string") {
-        store.issues.push({ file: relPath, path: key, severity: "err", message: `Missing or non-string "${key}".` });
-      }
-    }
-    if (typeof el.id === "string") {
-      const existing = store.index.get(el.id);
-      if (existing) {
-        store.issues.push({
-          file: relPath,
-          path: "id",
-          severity: "err",
-          message: `Duplicate element id "${el.id}" (also in ${existing}).`
-        });
-        continue;
-      }
-      store.index.set(el.id, relPath);
-    }
-    store.files.push({ relPath, element: el });
-  }
-  return store;
-}
-function assemble(store) {
-  return store.files.map((f) => f.element);
-}
-function checkStructure(store) {
-  const issues = [];
-  const ids = store.index;
-  const fileOf = (id) => ids.get(id);
-  const roots = store.files.filter((f) => f.element.metatype === "domain");
-  if (roots.length === 0) {
-    issues.push({ severity: "err", message: `No domain root element (id must be "${model_exports.ROOT_ID}").` });
-  } else if (roots.length > 1) {
-    for (const r of roots.slice(1)) {
-      issues.push({ file: r.relPath, severity: "err", message: "Multiple domain roots; exactly one is allowed." });
-    }
-  }
-  for (const { relPath, element: el } of store.files) {
-    if (el.metatype === "event") {
-      issues.push({
-        file: relPath,
-        severity: "err",
-        message: "Events are derived from commands at generation time and must not be authored on disk."
-      });
-      continue;
-    }
-    if (el.metatype !== "domain" && typeof el.pid === "string" && !ids.has(el.pid)) {
-      issues.push({ file: relPath, path: "pid", severity: "err", message: `Parent "${el.pid}" not found.` });
-    }
-    if ((el.metatype === "aggregate" || el.metatype === "projection") && Array.isArray(el.fields) && !el.fields.some((f) => f?.name === "id")) {
-      issues.push({
-        file: relPath,
-        path: "fields",
-        severity: "err",
-        message: `Every ${el.metatype} needs an identity field named exactly "id" (typed by a {Name}Id term).`
-      });
-    }
-    for (const { path, elementId } of collectTypeRefs(el)) {
-      if (!elementId.startsWith("#") && !ids.has(elementId)) {
-        issues.push({ file: relPath, path, severity: "err", message: `Type target "${elementId}" not found.` });
-      }
-    }
-    if (el.metatype === "subscription" && typeof el.triggerId === "string") {
-      const commandId = model_exports.mirroredId(el.triggerId);
-      const cmdFile = fileOf(commandId);
-      if (!cmdFile) {
-        issues.push({
-          file: relPath,
-          path: "triggerId",
-          severity: "err",
-          message: `Trigger "${el.triggerId}" does not mirror any command id (expected command "${commandId}").`
-        });
-      }
-    }
-  }
-  return issues;
-}
-function collectTypeRefs(el) {
-  const refs = [];
-  const fieldsAt = (fields, base) => {
-    if (!Array.isArray(fields))
-      return;
-    fields.forEach((field, i) => {
-      const elementId = field?.type?.elementId;
-      if (typeof elementId === "string")
-        refs.push({ path: `${base}[${i}].type.elementId`, elementId });
-    });
-  };
-  fieldsAt(el.fields, "fields");
-  fieldsAt(el.event?.fields, "event.fields");
-  return refs;
-}
 function renderTree(elements) {
   const byParent = /* @__PURE__ */ new Map();
   for (const element of elements) {
@@ -32465,7 +31313,7 @@ function manualReport(projectDir, map) {
   const dir = manualDirName(projectDir);
   const out = {};
   if (map.missing.length > 0)
-    out.missingManual = map.missing.map((e) => `${e.element} expects ${dir}/${e.manualRel} \u2014 missing` + (e.granular ? ` (extends the generated ${Path8.basename(e.destRel, ".java")}Base)` : ""));
+    out.missingManual = map.missing.map((e) => `${e.element} expects ${dir}/${e.manualRel} \u2014 missing` + (e.granular ? ` (extends the generated ${Path7.basename(e.destRel, ".java")}Base)` : ""));
   if (map.strays.length > 0)
     out.strayManual = map.strays.map((s) => `${dir}/${s} matches no manual-marked element \u2014 delete it or mark the element 'manual'`);
   return out;
@@ -32576,9 +31424,9 @@ function registerTools(server2) {
     try {
       const zip = await client.generate(sources, generateSettings);
       const outputName = output ?? srcDirName(projectDir);
-      const outputDir = Path8.isAbsolute(outputName) ? outputName : Path8.resolve(projectDir, outputName);
+      const outputDir = Path7.isAbsolute(outputName) ? outputName : Path7.resolve(projectDir, outputName);
       const overlay = manualMap.mapped.map((m) => ({
-        sourceAbs: Path8.join(manualDir, m.manualRel),
+        sourceAbs: Path7.join(manualDir, m.manualRel),
         destRel: m.destRel
       }));
       const result = extractZip(zip, outputDir, overlay);
@@ -32635,61 +31483,23 @@ function registerTools(server2) {
         message: `${manualDirName(projectDir)}/${rel} maps to no element currently marked manual \u2014 sync-back only adopts changes for manual elements (mark the element 'manual' first, or copy by hand).`
       });
     }
-    const srcPath = Path8.join(srcDirOf(projectDir), entry.destRel);
+    const srcPath = Path7.join(srcDirOf(projectDir), entry.destRel);
     if (!Fss.existsSync(srcPath)) {
       return fail({
         code: "no-src-copy",
         message: `No derived copy at ${entry.destRel} under the src dir \u2014 nothing to sync back.`
       });
     }
-    const manualPath = Path8.join(manualDir, rel);
+    const manualPath = Path7.join(manualDir, rel);
     const data = Fss.readFileSync(srcPath);
     const changed = !Fss.existsSync(manualPath) || !data.equals(Fss.readFileSync(manualPath));
-    Fss.mkdirSync(Path8.dirname(manualPath), { recursive: true });
+    Fss.mkdirSync(Path7.dirname(manualPath), { recursive: true });
     Fss.writeFileSync(manualPath, data);
     return ok({
       synced: `${manualDirName(projectDir)}/${rel}`,
       from: entry.destRel,
       changed,
       note: changed ? "manual/ updated from the src/ copy \u2014 the next generate re-copies it as usual." : "Files were already identical \u2014 nothing changed."
-    });
-  });
-  server2.registerTool("nomiq_dsl_import", {
-    description: "One-shot migration for legacy projects: decompile an old JSON model store (.nomiq/model) into textual DSL sources in the configured DSL directory. Element ids are re-keyed to deterministic name-derived ids on the next compile \u2014 afterwards the DSL files are the only source of truth and .nomiq/model can be deleted. Refuses to overwrite existing DSL files unless overwrite is true.",
-    inputSchema: {
-      projectDir: projectDirSchema,
-      overwrite: external_exports.boolean().default(false).describe("Replace existing DSL files"),
-      layout: external_exports.enum(["split", "compact"]).default("split").describe("split: one file per context/holder; compact: one file per context")
-    }
-  }, async ({ projectDir = process.cwd(), overwrite, layout }) => {
-    const store = scanModel(projectDir);
-    if (store.files.length === 0) {
-      return fail({ code: "no-model", message: "No legacy JSON model found under .nomiq/model \u2014 nothing to import." });
-    }
-    const local = [...store.issues, ...checkSchemas(store), ...checkStructure(store)];
-    const localErrs = local.filter((i) => i.severity === "err");
-    if (localErrs.length > 0) {
-      return fail({
-        code: "local-errors",
-        message: "Fix the legacy model errors before importing to DSL.",
-        issues: localErrs
-      });
-    }
-    const result = importDsl(projectDir, assemble(store), overwrite, layout);
-    if ("error" in result)
-      return fail({ code: "src-exists", message: result.error });
-    if (result.issues.some((i) => i.severity === "err")) {
-      return fail({
-        code: "not-representable",
-        message: "Some elements cannot be represented in the DSL; nothing was written.",
-        issues: result.issues
-      });
-    }
-    const dslDir = dslDirName(projectDir);
-    return ok({
-      files: result.files.map((f) => `${dslDir}/${f}`),
-      issues: result.issues,
-      note: `${dslDir}/ is now the only source of truth \u2014 .nomiq/model can be deleted.`
     });
   });
   server2.registerTool("nomiq_auth_set", {
@@ -32759,7 +31569,7 @@ function registerTools(server2) {
 }
 
 // _build/src/mcp/index.js
-var server = new McpServer({ name: "nomiq", version: "0.2.0" });
+var server = new McpServer({ name: "nomiq", version: "0.3.0" });
 registerTools(server);
 var transport = new StdioServerTransport();
 await server.connect(transport);

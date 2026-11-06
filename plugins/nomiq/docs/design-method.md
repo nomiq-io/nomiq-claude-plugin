@@ -1,6 +1,6 @@
 # nomiq Design Method
 
-How to run a conversational domain-design session that produces a **high-level nomiq domain model**. This document covers structure and vocabulary only — no scripting. Inputs, errors, effects, invariants, conditions, and event-field value expressions belong to the implement pass (see `scripting.md` and `slot-contexts.md`).
+How to run a conversational domain-design session that produces a **high-level nomiq domain model**. This document covers structure and vocabulary only. Inputs, errors, effects, invariants, conditions, and event-field value expressions belong to the implement pass (see `scripting.md` and `slot-contexts.md`).
 
 ## 1. Conceptual model
 
@@ -11,37 +11,37 @@ Command → Aggregate → Event → Projection → Query
 ```
 
 - **Aggregates** are the write side: consistency boundaries that receive commands, validate them, and emit events. `Command → Validate → Event → Effect`.
-- **Events** are immutable facts, the source of truth. Every command emits exactly one event on success. Events are *derived* from commands — you name them, you never model them as separate elements.
+- **Events** are immutable facts, the source of truth. Every command emits exactly one event on success. Events are *derived* from commands — you name them inside the command.
 - **Projections** are the read side: denormalized read models that subscribe to events to stay current, and expose queries. `Event → Update View → Query`.
 - **Queries** are read operations, hosted on aggregates or projections.
-- **Processes** are long-lived workflow coordinators (sagas): correlation-keyed **state machines** that accept intents and react to events and deadlines through handlers living in `init` and `state` blocks, dispatching decisions to other elements. `Intent/Event → Handler → Transition + Dispatch`. The only element that communicates across services (see `_docs/semantics.md`).
+- **Processes** are long-lived workflow coordinators (sagas): correlation-keyed **state machines** that accept intents and react to events and deadlines through handlers living in `init` and `state` blocks, dispatching decisions to other elements. `Intent/Event → Handler → Transition + Dispatch`. The only element that communicates across services.
 - **Vocabulary** (terms, valuetypes, entities, enumerations) is the ubiquitous language of the domain, shared flat under the domain root and referenced by name everywhere a field needs a type.
 
 ## 2. Design method — how to run the conversation
 
 ### Vocabulary first
 
-Identify the domain's ubiquitous language before proposing structures. Ask what the business calls things; capture identities, money-like quantities, closed status sets, and composite values as vocabulary items. Propose vocabulary *before or alongside* the structures that use it — never leave a field pointing at a type that doesn't exist.
+Identify the domain's ubiquitous language before proposing structures. Ask what the business calls things; capture identities, money-like quantities, closed status sets, and composite values as vocabulary items. Propose vocabulary *before or alongside* the structures that use it, so every field points at an existing type.
 
 ### Interview, then propose incrementally
 
 - Be a critical DDD advisor. Question vague requirements; surface trade-offs. Don't agree just to be agreeable.
 - Ask about the business need: Who acts on the system? What decisions change state? What do users need to *see*? The answers map to commands, aggregates, and projections respectively.
 - Propose in small, reviewable increments — one bounded context or one aggregate-plus-projection slice per turn. Many turns will have no model changes at all; pure conversation is valuable.
-- When the user asks to extend something that already exists, add fields to it — don't re-propose the whole element.
+- When the user asks to extend something that already exists, add fields to it and present only the change.
 - Never rename, retype, or delete existing fields as part of routine proposals; only add. Restructure only when the user explicitly asks for it.
 
 ### Think in bounded contexts
 
-Group aggregates and projections into bounded contexts named after business sub-domains (Ordering, Fulfillment, Banking). A context is a language boundary: the same word may mean different things in different contexts — that's a signal to split, not to unify.
+Group aggregates and projections into bounded contexts named after business sub-domains (Ordering, Fulfillment, Banking). A context is a language boundary: the same word may mean different things in different contexts — that's a signal to split.
 
-### Present, don't persist
+### Present first, persist after approval
 
 During the design session:
 
 - **Present every proposal as readable markdown** — a tree of the proposed structure plus field tables (format in §8). The user reviews and refines in conversation.
 - **Do NOT write any model files** while designing. Files are written only after the user approves the design and you move to the write-out step.
-- **Do NOT add any scripting.** No inputs, no errors, no effects, no invariants, no conditions, no value expressions. The design pass produces names, shapes, descriptions, and wiring (command→event, projection→subscription) — nothing executable.
+- **Keep the design pass free of scripting.** It produces names, shapes, descriptions, and wiring (command→event, projection→subscription). Inputs, errors, effects, invariants, conditions and value expressions belong to the implement pass.
 
 ## 3. Structural rules (strict)
 
@@ -61,14 +61,14 @@ domain (root)
 │       └── state machine: init block, state blocks, final list
 ├── term               ┐
 ├── valuetype          │ vocabulary: FLAT under the
-├── entity             │ domain root, never nested
+├── entity             │ domain root
 └── enumeration        ┘
 ```
 
 - A context contains only aggregates, projections, and processes.
 - An aggregate contains only commands and queries.
 - A projection contains only queries and subscriptions.
-- A process contains intent contracts plus its state machine: one `init` block, `state` blocks, and a `final` list of terminal states. Handlers (`on …` / `after …`) live inside init/state blocks — never at process level.
+- A process contains intent contracts plus its state machine: one `init` block, `state` blocks, and a `final` list of terminal states. Handlers (`on …` / `after …`) live inside init/state blocks.
 - Commands, queries, subscriptions, intents, and handlers are leaves — no children.
 - Vocabulary elements have no parent; they live flat under the domain root.
 
@@ -78,14 +78,14 @@ domain (root)
 |---|---|---|
 | context | Bounded context, top-level grouping | Business sub-domain |
 | aggregate | Consistency boundary owning commands and queries | Write side |
-| projection | Read model exposing queries | Read side; useless without subscriptions |
+| projection | Read model exposing queries | Read side; fed by subscriptions |
 | process | Long-lived workflow coordinator (saga), a state machine | The only element that sends decisions (dispatches) to others |
 | command | State-changing decision on an aggregate | Emits exactly one event; ack is final (committed or rejected) |
 | query | Read operation on an aggregate or projection | Fields are its parameters |
 | subscription | A projection's reaction to one event | Names the event it reacts to |
 | intent | A business request on a process — a **contract** only (fields + correlation) | Ack means accepted-for-pursuit; outcomes arrive later as facts; all handling lives in init/state blocks |
 | handler | A reaction inside `init` or a `state`: "whenever X, then Y" | Triggered by an intent, an event, or a state-scoped deadline (`after` N s/m/h/d) |
-| actor | The authenticated caller, one per domain, mapped from token claims | Holds only what authorization and injection need, not a user profile |
+| actor | The authenticated caller, one per domain, mapped from token claims | Holds only what authorization and injection need |
 | term | A primitive wrapped with semantic meaning | primitive: string, integer, float, date, boolean, money |
 | enumeration | Closed set of named values | Items are camelCase |
 | valuetype | Immutable record, no identity | Address, DateRange |
@@ -113,7 +113,7 @@ domain (root)
 | **Query** | **noun phrase** describing what's returned | TransactionList, AccountSummary, PendingOrders |
 | Subscription | On + event name | OnOrderPlaced, OnOrderShipped |
 | Intent | imperative verb, like commands | BookTheBox, FulfillOrder |
-| Handler | never written — always derived from the trigger | OnReservationCreated, OnBookTheBox, After15M |
+| Handler | derived from the trigger | OnReservationCreated, OnBookTheBox, After15M |
 | State | camelCase, few and meaningful | started, reserved, expired |
 | Term | noun, often ending in Id for identities | OrderId, EmailAddress, AccountNumber |
 | Enumeration | noun for the closed set | OrderStatus, PaymentMethod |
@@ -146,23 +146,23 @@ Pattern:
 - Verb-noun compound (`PlaceOrder`) → rearrange to **noun + past participle** (`OrderPlaced`).
 - Use irregular past participles correctly (write → written, give → given, take → taken).
 
-The event automatically inherits all of the command's fields. List extra event-only fields only for server-generated values (assigned ids, timestamps) — never repeat command fields.
+The event automatically inherits all of the command's fields. List extra event-only fields only for server-generated values (assigned ids, timestamps).
 
 ### When to model a process
 
-Reach for a process — not a bigger aggregate, and not subscription tricks — when the requirement is a workflow, no single consistency boundary:
+Reach for a process when the requirement is a workflow that spans consistency boundaries:
 
 - **Multi-aggregate workflows**: a business outcome that needs decisions on several aggregates (book a box = create a reservation + open the locker + start billing).
-- **Fan-out**: one decision that must reach many instances — a process accepts the intent and dispatches per instance; its ack is visibly "accepted", never "all done".
-- **Timeouts that branch**: "if X hasn't happened within N minutes, then Y — unless Z" — a deadline handler (`after 15m`) inside the state it time-boxes. A timeout that only ever does *one unconditional thing to the aggregate itself* is a **timer** instead (see below) — don't grow a state machine for a reminder.
-- **Cross-service failure handling**: rejections are facts, so a downstream refusal is just another event a state handler reacts to — compensation is ordinary handler logic, not an error channel.
+- **Fan-out**: one decision that must reach many instances — a process accepts the intent and dispatches per instance; its ack means "accepted".
+- **Timeouts that branch**: "if X hasn't happened within N minutes, then Y — unless Z" — a deadline handler (`after 15m`) inside the state it time-boxes. A timeout that only ever does *one unconditional thing to the aggregate itself* is a **timer** (see below).
+- **Cross-service failure handling**: rejections are facts, so a downstream refusal is just another event a state handler reacts to — compensation is ordinary handler logic.
 
 A process **is a state machine** — design it as one:
 
 - **Name the states** — few and meaningful, each a phase the workflow can rest in (started, reserved, expired). The derived `{Process}State` enumeration (states + finals) is referencable everywhere, so the names are part of the ubiquitous language.
 - **One intent per business request.** An intent is a contract — fields plus which request field it correlates by; how it is handled belongs to init/state blocks at implement time. An intent handled in no block for the instance's current state is rejected implicitly (lifecycle).
-- **Terminal outcomes go in `final`** — the absorbing end states (`final reserved failed expired`). Once there, the instance is done; nothing revives it.
-- **Deadlines live in the state they time-box** — "no confirmation within 15 minutes" is an `after 15m` in `started`, not a process-wide timer.
+- **Terminal outcomes go in `final`** — the absorbing end states (`final reserved failed expired`). Once there, the instance is done.
+- **Deadlines live in the state they time-box** — "no confirmation within 15 minutes" is an `after 15m` in `started`.
 
 ### Timer or process?
 
@@ -172,12 +172,12 @@ Choose a **timer** when the wait is self-contained: one aggregate, one unconditi
 
 Choose a **process** the moment the wait needs anything a timer deliberately lacks: a guard at firing time, a branch between outcomes, a terminal state that absorbs late facts, or a second element to talk to. A timer has no firing guard and no cancel — it delivers and the command's own errors judge it — so if "did it still apply?" is a business question rather than an error, you want a state machine.
 
-A process can never enforce a cross-service invariant — wanting one signals a missing aggregate (e.g. a reservation aggregate for uniqueness). Every process needs an `id` correlation-key field; intents follow command naming. Handlers may name a **milestone event** (BookingStarted, BookingExpired) marking the workflow's lifecycle — but handler names themselves are never written, always derived from the trigger (OnBookTheBox, OnReservationCreated, After15M). The same mirroring rule as commands applies: an intent handler's milestone automatically inherits the intent's request fields — never repeat them; declare extras only for computed values, and prefer a bodiless `event BookingStarted`.
+Cross-service invariants belong to an aggregate — wanting one signals a missing aggregate (e.g. a reservation aggregate for uniqueness). Every process needs an `id` correlation-key field; intents follow command naming. Handlers may name a **milestone event** (BookingStarted, BookingExpired) marking the workflow's lifecycle; handler names are derived from the trigger (OnBookTheBox, OnReservationCreated, After15M). The same mirroring rule as commands applies: an intent handler's milestone automatically inherits the intent's request fields; declare extras only for computed values, and prefer a bodiless `event BookingStarted`.
 
 ### Identity rules
 
 - **Every aggregate, projection, and process needs an identity field**: a field named `id` whose type is a term named `{Name}Id` (aggregate Order → `id: OrderId`; for a process it is the correlation key). Propose the `{Name}Id` term alongside the aggregate.
-- **Every command carries its aggregate's identity.** A command is a self-contained message, not a method call — it must say *which* instance it targets. For a command under aggregate `X`, include a field `xId: XId` in addition to the command's other fields. This applies to creation commands too: the caller supplies a freshly minted id.
+- **Every command carries its aggregate's identity.** A command is a self-contained message: it says *which* instance it targets. For a command under aggregate `X`, include a field `xId: XId` in addition to the command's other fields. This applies to creation commands too: the caller supplies a freshly minted id.
   - Correct: `AssignCourier` on Order → fields `orderId: OrderId`, `courierId: CourierId`.
   - Wrong: `AssignCourier` with only `courierId` — cannot tell which Order to assign to.
 
@@ -185,16 +185,16 @@ A process can never enforce a cross-service invariant — wanting one signals a 
 
 - **Every domain declares exactly one `actor`**, with a required `id` field mapped from the `sub` claim. Generation fails without it.
 - **Map a claim only when a rule or injection needs it.** A required field rejects any token that lacks the claim, so mark a field `optional` unless every caller has it.
-- **`id` is the provider's subject**, unique within one issuer. It is not automatically a customer or account id.
+- **`id` is the provider's subject**, unique within one issuer. Map it to a customer or account id explicitly.
 - Name fields in domain language (`roles`, `partnerId`). The `claim` string holds the provider's name, so changing provider changes only those strings.
 
 ### Projections must subscribe
 
-A projection is useless without subscriptions — that is its only way to stay current. **Every projection must have at least one subscription**, one per event it consumes. When you propose a projection, propose its subscriptions in the same breath, and make sure each referenced event exists (i.e., some command in the design emits it). Never propose two subscriptions to the same event under one projection. Subscriptions carry no fields — how they update the read model is implement-pass work.
+Subscriptions are how a projection stays current. **Every projection must have at least one subscription**, one per event it consumes. When you propose a projection, propose its subscriptions in the same breath, and make sure each referenced event exists (i.e., some command in the design emits it). How subscriptions update the read model is implement-pass work.
 
 ## 4. Field-type coverage rule (mandatory)
 
-**Primitives are never valid as a field's type.** Primitives (`string`, `integer`, `float`, `date`, `boolean`, `money`) appear in exactly one place: as the wrapped primitive of a term.
+**Primitives live inside terms.** Primitives (`string`, `integer`, `float`, `date`, `boolean`, `money`) appear in exactly one place: as the wrapped primitive of a term.
 
 Every field's type must reference an existing vocabulary element by name — a term, enumeration, valuetype, or entity that is already in the model or that you propose in the same design increment. Before finalizing any proposal, scan every field and verify its type resolves; if it doesn't, add the missing vocabulary item.
 
@@ -239,7 +239,7 @@ This rationale is what a reviewer reads to judge the element, and what the imple
 
 A high-level design is ready to hand to the implement pass when:
 
-- [ ] **Vocabulary is complete** — every field's type resolves to a term/enumeration/valuetype/entity; no primitives used directly.
+- [ ] **Vocabulary is complete** — every field's type resolves to a term/enumeration/valuetype/entity.
 - [ ] **The actor** is declared, with `id` and any claims authorization will need.
 - [ ] **Bounded contexts** are named and every aggregate/projection lives in one.
 - [ ] **Every aggregate** has an `id: {Name}Id` identity field (with the term) plus its key state fields.
@@ -248,7 +248,7 @@ A high-level design is ready to hand to the implement pass when:
 - [ ] **Every process** has its `id` correlation-key field, at least one intent contract (fields + the request field it correlates by), named states, and a `final` list of terminal outcomes; which facts and deadlines drive each transition is captured in the descs — handler bodies are implement-pass work.
 - [ ] **Every query** states what it returns (noun-phrase name + desc) and lists its parameter fields.
 - [ ] **Every element** has a `## Purpose` / `## Need` desc.
-- [ ] **No scripting anywhere** — no inputs, errors, effects, invariants, or conditions.
+- [ ] **Design only** — inputs, errors, effects, invariants, and conditions wait for the implement pass.
 
 ## 7. Worked mini-example
 

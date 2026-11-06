@@ -18,18 +18,12 @@ the design**.
 2. If `.nomiq/settings.json` does not exist, run the `init` flow first — follow
    the nomiq init skill.
 3. Read every existing `.nomiq` file in the DSL directory — you are evolving
-   that model, not starting fresh.
-4. **Legacy project** (`.nomiq/model/` exists but the DSL directory does not):
-   migrate first with the `nomiq_dsl_import` tool — it decompiles the old JSON
-   store into DSL sources; afterwards `.nomiq/model/` can be deleted. Element
-   ids are re-keyed to deterministic name-derived ids, which changes nothing
-   in the generated code (ids are derived data). The plugin tooling works on
-   DSL sources only, so there is no continuing without migrating.
+   that model.
 
 ## Phase A — propose (no files, no scripts)
 
 1. Interview the user about their domain and business needs. Ask focused
-   questions; don't demand a full specification up front.
+   questions and build the picture incrementally.
 2. Propose a **high-level design only**, following design-method.md: vocabulary
    (terms, enumerations, valuetypes), contexts, aggregates with fields, commands
    with request fields and event name/fields, projections with read-model fields,
@@ -66,7 +60,6 @@ the design**.
    header merge,
    and a holder re-opened across files (same kind + name) merges its members
    (partial declarations), so splitting a huge holder further stays legal.
-   `nomiq_dsl_import` produces the split layout by default.
 
    Follow `docs/dsl.md` exactly: keyword-block declarations, `context <path>`
    headers (lowercase dotted), `field name: Type`, `command X { … event Y }`,
@@ -81,20 +74,18 @@ the design**.
    sits on the header, before the block) plus empty `init`/`state` blocks and
    the `final` list; handlers come at implement time.
    Doc comments `///` for descriptions — the run sits directly above what it
-   documents, with a **blank line above the comment**, never between it and its
-   member. Follow the formatting rules in `docs/dsl.md` §2 as you write: one
+   documents, with a **blank line above the comment**. Follow the formatting rules in `docs/dsl.md` §2 as you write: one
    blank line between member groups, around any documented member, and around
    any member that opens a `{ … }` block; plain one-liners of the same kind
-   stay packed. A documented model is unreadable without that separation, and
+   stay packed. That separation keeps a documented model readable, and
    it is exactly what `nomiq-fmt` emits.
-   Leave behavior empty — no inputs/errors/effects/handlers/transitions/
-   dispatch bindings/selection predicates yet (except trivially obvious event
-   blocks with no extra fields).
+   Leave behavior to the implement skill: inputs, errors, effects, handlers,
+   transitions, dispatch bindings and selection predicates. Trivially obvious
+   event blocks with no extra fields belong here.
 
-   **No id minting**: element ids are derived from names by the compiler —
-   the DSL is the only source of truth and ids never appear anywhere. Renaming
-   an element re-keys it, which is normal (ids are derived data); just avoid
-   gratuitous renames of an approved design without telling the user.
+   **Ids are derived**: the compiler derives element ids from names, and the DSL
+   is the only source of truth. Renaming an element re-keys it, which is normal;
+   tell the user before renaming anything in an approved design.
 
 2. When editing existing files, change only what the approved design changed.
 3. Run `nomiq_model_check` — it compiles all `.nomiq` sources in the DSL

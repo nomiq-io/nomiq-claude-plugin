@@ -19,8 +19,8 @@ generated-sources directory. Do NOT read docs or run other tools first.
    per-module counts (`modules`), how many existing files were overwritten
    (`overwrittenCount`), how many stale files from the previous generation
    were removed (`deletedCount` — generation tracks its output in a
-   `.generated` ledger and prunes files the new model no longer produces;
-   files it did not write are never touched), and how many hand-written
+   `.generated` ledger and prunes files absent from the new output; it
+   touches only files it wrote), and how many hand-written
    manual files were overlaid into src/ (`copiedCount`). If the result carries
    `missingManual`, relay it — manual-marked elements are waiting for their
    implementation under `manual/` (call `nomiq_doc` for `manual-flow`);
@@ -30,7 +30,7 @@ generated-sources directory. Do NOT read docs or run other tools first.
    be generated. List the issues compactly (`file:line — message`), then ask
    the user whether to fix them now. Only if they say yes: run the
    validate-fix loop exactly as specified by the nomiq implement skill (call
-   `nomiq_doc` for `slot-contexts` at that point, not before), then re-run
+   `nomiq_doc` for `slot-contexts` at that point), then re-run
    step 1.
 
 ## Failure handling
@@ -49,8 +49,8 @@ generated-sources directory. Do NOT read docs or run other tools first.
 - `422 build-failed` → the model validates but the generator rejected it.
   Report the failure message (it names the project/module) and offer to fix as
   in step 3 — the fix loop treats it as one more issue.
-- `manual-conflict` → generation now produces a path a `manual/` file also
-  maps to: the element is no longer marked manual. Ask the user whether to
+- `manual-conflict` → generation produces a path a `manual/` file also
+  maps to, because the element lacks `@manual`. Ask the user whether to
   delete the manual file or restore the `@manual` annotation; nothing was
   written.
 - `manual-divergence` → a derived copy under src/ was edited in place. Show
@@ -64,10 +64,9 @@ regenerate. (Hand-written manual flows are the exception: their home is the
 
 ## Known platform limitations (verify before blaming the model)
 
-- **`money` terms**: the Java templates currently emit a `double`→`BigDecimal`
-  mismatch in the vocabulary `Json.java` — the generated code does not compile.
-  Until fixed server-side, suggest `float` with a `precision` constraint.
-- **Custom `package` setting**: a dotted package (e.g. `io.acme.shop`) produces
-  inconsistent package qualifiers across modules (imports still reference the
-  domain-name-derived package) — the generated code does not compile. Until
-  fixed, omit `package` so everything derives from the domain name.
+- **`money` terms**: the Java templates emit a `double`→`BigDecimal` mismatch in
+  the vocabulary `Json.java`, which fails compilation. Suggest `float` with a
+  `precision` constraint.
+- **Custom `package` setting**: a dotted package (e.g. `io.acme.shop`) leaves
+  imports on the domain-name-derived package, which fails compilation. Leave
+  `package` unset so everything derives from the domain name.

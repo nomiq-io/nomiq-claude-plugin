@@ -15,8 +15,7 @@ Set up a nomiq project: the model is authored in `.nomiq` DSL files — the
    model).
 2. Ask the user (one question, sensible defaults):
    - **Domain name** — PascalCase, e.g. `Shop` (required).
-   - **Language** — only `java` is supported today (default: `java`).
-   - **Package** — e.g. `io.acme.shop` (default: derive from the domain name).
+   - **Language** — `java` is the supported language (default: `java`).
    - **DSL directory** — where the `.nomiq` sources live (default: `dsl/`).
    - **Source directory** — where generated code is unpacked (default: `src/`).
 3. Write `.nomiq/settings.json`:
@@ -25,7 +24,6 @@ Set up a nomiq project: the model is authored in `.nomiq` DSL files — the
    {
      "language": "java",
      "identity": "keycloak",
-     "package": "io.acme.shop",
      "dsl": "dsl",
      "src": "src"
    }
@@ -35,7 +33,7 @@ Set up a nomiq project: the model is authored in `.nomiq` DSL files — the
    provider issuing JWT access tokens. Ask the user which one they use.
    `dsl` and `src` may be omitted when the user keeps the defaults. Other
    optional keys (`techStack`, `apiUrl`, `portalUrl`) exist for advanced
-   setups — do not write them unprompted.
+   setups — write them only when the user asks.
 4. Create the DSL directory and write `<dsl>/domain.nomiq` — the root file
    holding the domain declaration and the authenticated caller (vocabulary
    will join it later):

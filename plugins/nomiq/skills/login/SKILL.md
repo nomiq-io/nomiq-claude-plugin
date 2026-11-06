@@ -13,9 +13,9 @@ environment variable (which always wins; used for CI/headless runs).
 
 1. Call `nomiq_auth_status`.
    - If it reports a working key (`user`, `plan` present), tell the user who they
-     are signed in as and stop — nothing to do unless they want to switch keys.
+     are signed in as and stop, unless they want to switch keys.
    - If the key comes from `env`, say so: replacing it means changing the
-     environment variable, not this flow.
+     environment variable.
 2. If there is no key or the platform rejects it: give the user the portal keys
    page URL from the status/hint output (e.g. `<portalUrl>/keys`), and ask them to
    sign in there, mint a key, and paste it here.
